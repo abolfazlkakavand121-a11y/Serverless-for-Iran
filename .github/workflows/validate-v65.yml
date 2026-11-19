@@ -1,0 +1,40 @@
+name: Validate Serverless v65
+
+on:
+  push:
+    branches: [lab/v65-fragment]
+  pull_request:
+    branches: [lab/v65-fragment]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate JSON and v65 invariants
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const p = JSON.parse(fs.readFileSync('Subscription/Serverless-Lab-v65.json', 'utf8'));
+          if (!Array.isArray(p) || p.length !== 4) throw new Error('Expected 3 baseline profiles plus v65');
+          const v = p.find(x => x.remarks === 'Serverless-v65-fragC-true-split');
+          if (!v) throw new Error('v65 profile missing');
+          const tags = new Set(v.outbounds.map(x => x.tag));
+          for (const r of v.routing.rules) if (r.outboundTag && !tags.has(r.outboundTag)) throw new Error('Unknown outboundTag: ' + r.outboundTag);
+          for (const tag of ['tcp-fragment-tls','tcp-fragment-tls-cloudflare','tcp-fragment-tls-x']) {
+            const o = v.outbounds.find(x => x.tag === tag);
+            const masks = o?.streamSettings?.finalmask?.tcp || [];
+            if (masks.length !== 1 || masks[0].type !== 'fragment') throw new Error('Unexpected v65 mask chain: ' + tag);
+            const s = masks[0].settings;
+            if (s.packets !== 'tlshello' || s.delays[0] === '0') throw new Error('TLS hello is not emitted as delayed fragments: ' + tag);
+          }
+          for (const tag of ['tcp-fragment-tls-try','tcp-fragment-tls-cloudflare-try']) {
+            const o = v.outbounds.find(x => x.tag === tag);
+            if (o.streamSettings.finalmask.tcp.length !== 0) throw new Error('Try outbound should not fragment before fallback: ' + tag);
+          }
+          console.log('v65 validated; profile count:', p.length);
+          NODE
