@@ -44,3 +44,14 @@ https://github.com/patterniha/MITM-DomainFronting
 `TON (TON)`: UQAc-mZB3y7uxWHKiMmq0ORZEYgycWDWZ4V1k73HsXvTJx-i
 
 @patterniha
+
+
+## نسخه آزمایشی Lab
+
+پروفایل‌های آزمایشی جداگانه در شاخه [lab/profiles-v1](https://github.com/abolfazlkakavand121-a11y/Serverless-for-Iran/tree/lab/profiles-v1) نگهداری می‌شوند. برای تست در PattNG از subscription زیر استفاده کنید؛ این لینک سه پروفایل اصلی و دو پروفایل آزمایشی را ارائه می‌کند:
+
+```
+https://raw.githubusercontent.com/abolfazlkakavand121-a11y/Serverless-for-Iran/lab/profiles-v1/Subscription/Serverless-Lab.json
+```
+
+پروفایل‌های Lab هنوز تست عملی و تأیید نهایی نشده‌اند؛ پروفایل‌های اصلی این مخزن دست‌نخورده باقی مانده‌اند.
