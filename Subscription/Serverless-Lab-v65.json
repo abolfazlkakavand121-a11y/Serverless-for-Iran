@@ -2575,18 +2575,6 @@
         "tag": "tcp-direct",
         "protocol": "direct",
         "streamSettings": {
-          "finalmask": {
-            "tcp": [
-              {
-                "type": "merge",
-                "settings": {
-                  "times": 100,
-                  "delayMs": 30,
-                  "maxBytes": 16384
-                }
-              }
-            ]
-          },
           "sockopt": {
             "tcpUserTimeout": 4000,
             "domainStrategy": "ForceIP",
@@ -2619,9 +2607,6 @@
         "tag": "tcp-fragment-tls-try",
         "protocol": "direct",
         "streamSettings": {
-          "finalmask": {
-            "tcp": []
-          },
           "sockopt": {
             "fallback": {
               "noResponseFallbackDialerProxy": "tcp-fragment-tls",
@@ -2682,9 +2667,6 @@
           "redirect": "cloudflare.redirect:0"
         },
         "streamSettings": {
-          "finalmask": {
-            "tcp": []
-          },
           "sockopt": {
             "fallback": {
               "noResponseFallbackDialerProxy": "tcp-fragment-tls-cloudflare",
