@@ -32,9 +32,11 @@ jobs:
             const s = masks[0].settings;
             if (s.packets !== 'tlshello' || s.delays[0] === '0') throw new Error('TLS hello is not emitted as delayed fragments: ' + tag);
           }
+          const direct = v.outbounds.find(x => x.tag === 'tcp-direct');
+          if (direct.streamSettings?.finalmask) throw new Error('tcp-direct should not have merge buffering');
           for (const tag of ['tcp-fragment-tls-try','tcp-fragment-tls-cloudflare-try']) {
             const o = v.outbounds.find(x => x.tag === tag);
-            if (o.streamSettings.finalmask.tcp.length !== 0) throw new Error('Try outbound should not fragment before fallback: ' + tag);
+            if (o.streamSettings.finalmask?.tcp?.length) throw new Error('Try outbound should not fragment before fallback: ' + tag);
           }
           console.log('v65 validated; profile count:', p.length);
           NODE
