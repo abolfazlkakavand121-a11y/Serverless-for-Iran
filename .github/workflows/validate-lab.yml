@@ -34,7 +34,7 @@ jobs:
             }
           }
           for (const suffix of ['fragA', 'fragB']) {
-            const p = profiles.find(x => x.remarks === 'Serverless-v64-lab-oob-' + suffix);
+            const p = profiles.find(x => x.remarks === 'Serverless-v64-' + suffix + '-lab-oob-' + suffix);
             if (!p) throw new Error('Missing lab profile ' + suffix);
             const oob = p.outbounds.filter(o => o.dialMode === 'oob.0,0').map(o => o.tag).sort();
             const expected = ['tcp-fragment-tls', 'tcp-fragment-tls-cloudflare', 'tcp-fragment-tls-x'];
