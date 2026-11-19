@@ -1,0 +1,44 @@
+name: Validate lab subscription
+
+on:
+  push:
+    branches: [lab/profiles-v1]
+  pull_request:
+    branches: [lab/profiles-v1]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Parse and validate subscription
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'Subscription/Serverless-Lab.json';
+          const profiles = JSON.parse(fs.readFileSync(path, 'utf8'));
+          if (!Array.isArray(profiles) || profiles.length !== 5) throw new Error('Expected 5 profiles');
+          for (const [i, p] of profiles.entries()) {
+            if (!p.version?.min || !Array.isArray(p.outbounds) || !Array.isArray(p.routing?.rules)) {
+              throw new Error('Invalid profile structure at index ' + i);
+            }
+            const tags = new Set(p.outbounds.map(o => o.tag));
+            for (const r of p.routing.rules) {
+              if (r.outboundTag && !tags.has(r.outboundTag)) {
+                throw new Error('Unknown outboundTag ' + r.outboundTag + ' in profile ' + i);
+              }
+            }
+          }
+          for (const suffix of ['fragA', 'fragB']) {
+            const p = profiles.find(x => x.remarks === 'Serverless-v64-lab-oob-' + suffix);
+            if (!p) throw new Error('Missing lab profile ' + suffix);
+            const oob = p.outbounds.filter(o => o.dialMode === 'oob.0,0').map(o => o.tag).sort();
+            const expected = ['tcp-fragment-tls', 'tcp-fragment-tls-cloudflare', 'tcp-fragment-tls-x'];
+            if (JSON.stringify(oob) !== JSON.stringify(expected)) throw new Error('Unexpected OOB targets in ' + suffix);
+          }
+          console.log('Validated ' + profiles.length + ' profiles');
+          NODE
