@@ -1,0 +1,12 @@
+{
+  "tcp": [
+    {
+      "type": "tls-record",
+      "settings": {
+        "splitAt": 2,
+        "firstFragmentVersion": 771,
+        "remainingFragmentVersion": 769
+      }
+    }
+  ]
+}
