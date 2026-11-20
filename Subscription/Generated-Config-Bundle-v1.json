@@ -1,0 +1,596 @@
+{
+  "format": "pattng-method-config-bundle",
+  "version": 1,
+  "generated_from": "Serverless-for-Iran Subscription/Method-Execution-Pack-v1.json",
+  "important": "Only profiles explicitly marked importable_in_current_pattng_build=true are valid FinalMask snippets for the current app build. Other entries are adapter/design templates and must not be imported as if they were working configs.",
+  "usage": "For the three importable profiles, copy the value of finalMask_json into the profile's FinalMask field in PattNG. These are transport modifiers, not complete server address/port/credential profiles.",
+  "profiles": [
+    {
+      "profile_id": "TLS-REC-001",
+      "name": "TLS outer record-version override",
+      "implementation_status": "implemented-in-xray-fork",
+      "importable_in_current_pattng_build": true,
+      "finalMask_json": {
+        "tcp": [
+          {
+            "type": "tls-record",
+            "settings": {
+              "recordVersion": 771
+            }
+          }
+        ]
+      },
+      "notes": "Overrides only the outer TLS record legacy_version to 0x0303."
+    },
+    {
+      "profile_id": "TLS-REC-002",
+      "name": "SNI-position-aware TLS record fragmentation",
+      "implementation_status": "implemented-in-xray-fork",
+      "importable_in_current_pattng_build": true,
+      "finalMask_json": {
+        "tcp": [
+          {
+            "type": "tls-record",
+            "settings": {
+              "sniSplit": "mid-hostname"
+            }
+          }
+        ]
+      },
+      "notes": "SNI-aware split at the middle of the hostname. Other supported modes: before-extension, extension-header, after-extension."
+    },
+    {
+      "profile_id": "TLS-REC-003",
+      "name": "TLS record version differential across fragments",
+      "implementation_status": "implemented-in-xray-fork",
+      "importable_in_current_pattng_build": true,
+      "finalMask_json": {
+        "tcp": [
+          {
+            "type": "tls-record",
+            "settings": {
+              "splitAt": 2,
+              "firstFragmentVersion": 771,
+              "remainingFragmentVersion": 769
+            }
+          }
+        ]
+      },
+      "notes": "Splits at byte offset 2; first fragment outer version 0x0303, remaining fragment 0x0301."
+    },
+    {
+      "profile_id": "TLS-REC-004",
+      "name": "ClientHello padding and extension-length inflation",
+      "implementation_status": "requires-tls-client-change",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "extension_type": "padding(21)",
+        "padding_bytes": {
+          "min": 32,
+          "max": 512
+        },
+        "placement": "last_extension",
+        "record_repacking": "recalculate_all_lengths",
+        "preserve_sni": true,
+        "fallback": "native-clienthello"
+      },
+      "requires": {
+        "client": [
+          "uTLS/Xray TLS handshake builder integration"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-CH-005",
+      "name": "Trailing-dot SNI hostname form",
+      "implementation_status": "requires-tls-client-change",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "transform": "append-trailing-dot",
+        "scope": "SNI-only",
+        "http_authority": "original-hostname",
+        "certificate_verification_name": "original-hostname",
+        "fallback": "original-sni"
+      },
+      "requires": {
+        "client": [
+          "TLS client that can separate SNI wire name from certificate verification name"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-CH-006",
+      "name": "SNI omission / no-SNI ClientHello",
+      "implementation_status": "requires-tls-client-change",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "mode": "omit",
+        "verification_name": "destination-host",
+        "alpn": [
+          "h2",
+          "http/1.1"
+        ],
+        "fallback": "normal-sni"
+      },
+      "requires": {
+        "client": [
+          "TLS client handshake builder"
+        ],
+        "server": [
+          "destination must support no-SNI virtual hosting or a known default host"
+        ]
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-HS-007",
+      "name": "State-aware compatibility CCS insertion",
+      "implementation_status": "requires-tls-state-machine",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "message": "ChangeCipherSpec",
+        "value": "0x01",
+        "allowed_versions": [
+          "TLS1.3"
+        ],
+        "position": "after_clienthello_before_serverhello",
+        "max_insertions": 1,
+        "only_if_negotiated_compatibility_mode": true,
+        "fallback": "disabled"
+      },
+      "requires": {
+        "client": [
+          "TLS state machine integration"
+        ],
+        "server": [
+          "endpoint compatibility varies"
+        ]
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-HS-008",
+      "name": "TLS warning-alert preface",
+      "implementation_status": "existing-experimental",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "reference": "Serverless-v71-TLS-WarnAlert",
+        "bytes": "15030300020150",
+        "enabled_by_default": false
+      },
+      "requires": {
+        "client": [
+          "existing header-custom support"
+        ],
+        "server": [
+          "highly variable compatibility"
+        ]
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-TR-009",
+      "name": "TLSMasq relay-by-default two-phase transport",
+      "implementation_status": "requires-client-and-server",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "cover_origin": "${TLSMASQ_COVER_ORIGIN}",
+        "shared_secret_ref": "${TLSMASQ_SECRET_REF}",
+        "secret_bytes": 52,
+        "handshake_mode": "proxy-real-origin-handshake",
+        "activation": "authenticated_post_handshake_signal",
+        "inner_tls": "fresh_handshake_inside_disguised_records",
+        "replay_protection": true,
+        "masquerade_on_auth_failure": "continue_origin_relay"
+      },
+      "requires": {
+        "client": [
+          "TLSMasq-compatible dialer"
+        ],
+        "server": [
+          "TLSMasq listener/relay",
+          "reachable cover origin"
+        ]
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "HTTP-TR-010",
+      "name": "HTTP-prefix authenticated tunnel",
+      "implementation_status": "requires-client-and-server",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "cover_request": "GET / HTTP/1.1",
+        "authentication": "post-prefix-cryptographic-token",
+        "upgrade": "in-band-binary-framing",
+        "fallback": "serve-configured-decoy-response",
+        "tls_mode": "optional-provider-dependent",
+        "multiplexing": "stream-id"
+      },
+      "requires": {
+        "client": [
+          "new transport adapter"
+        ],
+        "server": [
+          "controlled HTTP listener and tunnel endpoint"
+        ]
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "HTTP-TR-011",
+      "name": "HTTP/2 stream tunnel",
+      "implementation_status": "requires-client-and-server",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "protocol": "h2",
+        "alpn": [
+          "h2"
+        ],
+        "stream_mode": "extended-connect-if-supported-else-authenticated-post",
+        "cover_authority": "${H2_COVER_AUTHORITY}",
+        "target_service": "${H2_TUNNEL_SERVICE}",
+        "tls_verify": true
+      },
+      "requires": {
+        "client": [
+          "HTTP/2 transport implementation"
+        ],
+        "server": [
+          "cooperating HTTP/2 reverse proxy or service"
+        ]
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TCP-TUN-012",
+      "name": "TCP stream desynchronization via VPN TUN",
+      "implementation_status": "requires-pattng-tun-change",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "scope": "selected TCP flows only",
+        "decoy_policy": "configurable",
+        "sequence_policy": "validated-sequence-space",
+        "ttl_policy": "per-platform-profile",
+        "real_stream": "unchanged",
+        "fallback": "disable-on-unsupported-stack",
+        "root_required": false
+      },
+      "requires": {
+        "client": [
+          "VPNService TUN packet interception",
+          "TCP sequence/ack tracking",
+          "device/Android-version test matrix"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "FRONT-013",
+      "name": "Provider-backed domain fronting",
+      "implementation_status": "requires-provider-and-client",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "front_sni": "${FRONT_DOMAIN}",
+        "http_authority": "${TARGET_AUTHORITY}",
+        "front_ip": "${FRONT_BOOTSTRAP_IP}",
+        "provider_route": "${PROVIDER_ROUTE_ID}",
+        "certificate_verification": "front-domain",
+        "origin_authorization": "provider-specific",
+        "fallback": "direct-disabled"
+      },
+      "requires": {
+        "client": [
+          "TLS client capable of SNI/authority separation"
+        ],
+        "server": [
+          "provider that explicitly supports this routing model",
+          "authorized target service"
+        ]
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "QUIC-014",
+      "name": "QUIC Initial and CRYPTO-frame fragmentation",
+      "implementation_status": "requires-quic-core-change",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "packet_space": "Initial",
+        "frame": "CRYPTO",
+        "boundaries": [
+          "before_sni",
+          "inside_sni",
+          "after_sni"
+        ],
+        "preserve_crypto_stream_bytes": true,
+        "recompute_initial_protection": true,
+        "fallback": "native-quic"
+      },
+      "requires": {
+        "client": [
+          "pinned quic-go integration and packet protection support"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "REFRACT-015",
+      "name": "Conjure / Refraction Networking client integration",
+      "implementation_status": "requires-external-infrastructure",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "station_discovery": "registration-channel",
+        "transport": "conjure-supported-transport",
+        "station_key_ref": "${CONJURE_STATION_KEY_REF}",
+        "registration_server": "${CONJURE_REGISTRATION_SERVER}"
+      },
+      "requires": {
+        "client": [
+          "Conjure client integration"
+        ],
+        "server": [
+          "station deployment in a suitable ISP/hosting topology",
+          "registration infrastructure",
+          "packet capture/forwarding infrastructure"
+        ]
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-REC-016",
+      "name": "TLS record content-type differential",
+      "implementation_status": "research-only",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "record_content_type": "0x16",
+        "mutation_values": [
+          "0x14",
+          "0x15",
+          "0x17",
+          "invalid"
+        ],
+        "apply_scope": "first_client_hello_record",
+        "restore_before_server_flight": true,
+        "fallback": "disabled"
+      },
+      "requires": {
+        "client": [
+          "Xray TLS record mutation support"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-REC-017",
+      "name": "TLS record/message length-field differential",
+      "implementation_status": "research-only",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "fields": [
+          "record_length",
+          "handshake_message_length",
+          "extensions_length",
+          "sni_extension_length",
+          "sni_list_length",
+          "hostname_length"
+        ],
+        "mutation_modes": [
+          "short",
+          "overlong",
+          "exclude_last_entry",
+          "plus_20_with_padding"
+        ],
+        "apply_scope": "first_client_hello_flight",
+        "parser_aware": true,
+        "fallback": "disabled"
+      },
+      "requires": {
+        "client": [
+          "Xray TLS record mutation support"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-CH-018",
+      "name": "Duplicate SNI extension strategy",
+      "implementation_status": "research-only",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "sni_extensions": [
+          "original",
+          "duplicate_same_hostname"
+        ],
+        "duplicate_position": [
+          "adjacent",
+          "first",
+          "last"
+        ],
+        "clienthello_rebuild": true,
+        "transcript_consistent": true,
+        "fallback": "single_sni"
+      },
+      "requires": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-CH-019",
+      "name": "SNI extension-type differential",
+      "implementation_status": "research-only",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "original_extension_type": "0x0000",
+        "test_extension_type": "0x9999",
+        "preserve_extension_payload": true,
+        "clienthello_rebuild": true,
+        "fallback": "normal_sni"
+      },
+      "requires": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-CH-020",
+      "name": "SNI NameType differential",
+      "implementation_status": "research-only",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "standard_name_type": "0x00",
+        "test_name_type": "0x01",
+        "scope": "selected_sni_entry",
+        "clienthello_rebuild": true,
+        "fallback": "normal_sni"
+      },
+      "requires": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-CH-021",
+      "name": "SNI hostname case variation",
+      "implementation_status": "requires-tls-client-change",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "transform": "alternating_ascii_case",
+        "scope": "sni_hostname_only",
+        "authority": "original-hostname",
+        "certificate_verification": "original-hostname",
+        "fallback": "original-sni"
+      },
+      "requires": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-CH-022",
+      "name": "SNI hostname null-byte and delimiter mutations",
+      "implementation_status": "research-only",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "insertions": [
+          "null",
+          "space",
+          "backspace",
+          "dot",
+          "subdomain-prefix",
+          "suffix"
+        ],
+        "positions": [
+          "prefix",
+          "middle",
+          "suffix"
+        ],
+        "clienthello_rebuild": true,
+        "certificate_verification": "original-hostname",
+        "fallback": "normal_sni"
+      },
+      "requires": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-CH-023",
+      "name": "Multiple SNI name-list entries",
+      "implementation_status": "research-only",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "entries": [
+          "original-hostname",
+          "configured-benign-hostname"
+        ],
+        "original_position": [
+          "middle",
+          "last"
+        ],
+        "entry_count": 2,
+        "clienthello_rebuild": true,
+        "fallback": "single_sni"
+      },
+      "requires": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-CH-024",
+      "name": "Cipher-suite list inflation",
+      "implementation_status": "requires-tls-client-change",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "inflation_modes": [
+          "maximum_valid_cipher_list",
+          "maximum_record_boundary"
+        ],
+        "suite_fill": "TLS_NULL_WITH_NULL_NULL",
+        "preserve_original_suites": true,
+        "recalculate_lengths": true,
+        "handshake_negotiation": "normal-supported-suite",
+        "fallback": "native_cipher_list"
+      },
+      "requires": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    },
+    {
+      "profile_id": "TLS-CH-025",
+      "name": "ClientHello extension ordering",
+      "implementation_status": "requires-tls-client-change",
+      "importable_in_current_pattng_build": false,
+      "adapter_contract": {
+        "orders": [
+          "sni_first",
+          "sni_last",
+          "reverse_non_sni"
+        ],
+        "preserve_extension_payloads": true,
+        "recalculate_lengths": true,
+        "clienthello_transcript_owned_by_tls_client": true,
+        "fallback": "native_order"
+      },
+      "requires": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "reason": "No compatible runtime/config parser for this method is present in the current PattNG/Xray build. This is a design template, not an importable or working node configuration."
+    }
+  ]
+}
