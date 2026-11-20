@@ -1,0 +1,50 @@
+name: Validate TLS alert experiment configs
+
+on:
+  push:
+    branches:
+      - experiment/tls-alert-preface
+    paths:
+      - 'Subscription/Serverless-tls-alert-test.json'
+      - 'EXPERIMENTS-TLS.md'
+      - '.github/workflows/validate-tls-alert-config.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout Serverless-for-Iran
+        uses: actions/checkout@v4
+
+      - name: Checkout matching Xray core fork
+        uses: actions/checkout@v4
+        with:
+          repository: abolfazlkakavand121-a11y/Xray-corexr
+          ref: feature/tls-record-fragment
+          path: xray
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: xray/go.mod
+          cache: true
+          cache-dependency-path: xray/go.sum
+
+      - name: Build Xray config validator
+        working-directory: xray
+        run: go build -o /tmp/xray ./main
+
+      - name: Validate every profile in the experiment subscription
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=0
+          while IFS= read -r profile; do
+            count=$((count + 1))
+            printf '%s\n' "$profile" > "/tmp/profile-$count.json"
+            echo "Validating profile $count"
+            /tmp/xray run -test -c "/tmp/profile-$count.json"
+          done < <(jq -c '.[]' Subscription/Serverless-tls-alert-test.json)
+          test "$count" -eq 3
+          echo "Validated $count profiles."
