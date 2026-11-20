@@ -124,37 +124,48 @@
       "name": "TLS record version differential across fragments",
       "family": "tls-record",
       "priority": "P1",
-      "implementation_status": "requires-core-change",
+      "implementation_status": "implemented-in-xray-fork",
       "default_enabled": false,
       "config_format": "xray-finalmask-versioned-fragments",
       "client_component": "Xray FinalMask",
       "requires": {
         "client": [
-          "TLS record fragment engine with per-record header control"
+          "Xray FinalMask parser and first-flight TLS record writer"
         ],
         "server": []
       },
       "parameters": {
         "first_fragment_version": "0x0303",
         "remaining_fragments_version": "0x0301",
+        "split_at_default": 2,
+        "split_at_range": {
+          "min": 1,
+          "max": 512
+        },
         "fragmentation_ref": "TLS-REC-002",
         "preserve_handshake_bytes": true,
-        "fallback": "pass-through"
+        "buffer_application_writes": true,
+        "fallback": "pass-through",
+        "default_enabled": false
       },
-      "execution_contract": "Uses TLS-REC-002 framing with independent version on each emitted record.",
-      "invariants": [],
-      "notes": "Separate mechanism from ordinary fixed-byte splitting; validate endpoint interoperability before use.",
+      "execution_contract": "Buffers application writes until the first complete ClientHello TLS record is available, then splits at a bounded byte offset and emits the first and remaining fragments with independently configured TLS record legacy_version values. The handshake bytes remain byte-identical.",
+      "invariants": [
+        "Both record versions must be between 0x0301 and 0x0303",
+        "Split offset must be between 1 and 512 and leave bytes in both fragments",
+        "Do not alter any ClientHello handshake payload byte",
+        "Pass through non-TLS, incomplete, malformed, non-ClientHello, or invalid split inputs unchanged",
+        "Flush an incomplete buffered record unchanged on close"
+      ],
+      "notes": "Implemented in the PattNG Xray fork. Focused parser, record-byte preservation and local TLS 1.2 handshake tests pass. Full cross-platform regression and external server acceptance remain separate validations.",
       "validation": [
         "configuration-parse",
-        "local-endpoint-handshake",
-        "certificate-validation",
-        "http-response-body",
-        "multiple-domains",
-        "youtube",
-        "large-transfer",
-        "10-minute-stability",
-        "reconnect"
-      ]
+        "fragmented-application-writes",
+        "independent-record-version-headers",
+        "handshake-byte-preservation",
+        "local-tls12-handshake",
+        "certificate-validation"
+      ],
+      "implementation_commit": "a2fcef8a8994fa504ba5ee47badd1c196cfd234d"
     },
     {
       "profile_id": "TLS-REC-004",
