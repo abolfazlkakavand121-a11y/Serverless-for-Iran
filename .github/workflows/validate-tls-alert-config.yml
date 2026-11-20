@@ -40,8 +40,8 @@ jobs:
       - name: Fetch geodata required by routing rules
         run: |
           mkdir -p xray
-          curl -fsSL https://github.com/XTLS/Xray-core/releases/latest/download/geoip.dat -o xray/geoip.dat
-          curl -fsSL https://github.com/XTLS/Xray-core/releases/latest/download/geosite.dat -o xray/geosite.dat
+          curl -fsSL https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat -o xray/geoip.dat
+          curl -fsSL https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat -o xray/geosite.dat
           cp xray/geoip.dat .
           cp xray/geosite.dat .
 
