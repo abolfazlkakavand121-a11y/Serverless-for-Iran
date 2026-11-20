@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Serverless Method Execution Pack",
+  "type": "object",
+  "required": [
+    "format",
+    "format_version",
+    "purpose",
+    "safety",
+    "control_profile",
+    "profiles"
+  ],
+  "properties": {
+    "format": {
+      "const": "serverless-method-execution-pack"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "safety": {
+      "type": "object"
+    },
+    "control_profile": {
+      "type": "object"
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 25,
+      "items": {
+        "type": "object",
+        "required": [
+          "profile_id",
+          "name",
+          "family",
+          "implementation_status",
+          "default_enabled",
+          "config_format",
+          "parameters",
+          "execution_contract",
+          "validation"
+        ],
+        "properties": {
+          "profile_id": {
+            "type": "string"
+          },
+          "default_enabled": {
+            "const": false
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "validation": {
+            "type": "array",
+            "minItems": 1
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
