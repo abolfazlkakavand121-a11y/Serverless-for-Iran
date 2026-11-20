@@ -489,6 +489,305 @@
         ]
       },
       "notes": "Not a normal VPS-only Xray profile; infrastructure and deployment model are fundamentally different."
+    },
+    {
+      "id": "TLS-REC-016",
+      "name": "TLS record content-type differential",
+      "family": "tls-record",
+      "status": "core-implementation-required",
+      "priority": "P3",
+      "runtime": {
+        "component": "Xray TLS record mutator",
+        "config_type": "tls-rec-016",
+        "config": {
+          "record_content_type": "0x16",
+          "mutation_values": [
+            "0x14",
+            "0x15",
+            "0x17",
+            "invalid"
+          ],
+          "apply_scope": "first_client_hello_record",
+          "restore_before_server_flight": true,
+          "fallback": "disabled"
+        }
+      },
+      "requirements": {
+        "client": [
+          "Xray TLS record mutation support"
+        ],
+        "server": []
+      },
+      "notes": "Record-type changes are deliberately experimental; many servers will reject them."
+    },
+    {
+      "id": "TLS-REC-017",
+      "name": "TLS record/message length-field differential",
+      "family": "tls-record",
+      "status": "core-implementation-required",
+      "priority": "P3",
+      "runtime": {
+        "component": "Xray TLS record mutator",
+        "config_type": "tls-rec-017",
+        "config": {
+          "fields": [
+            "record_length",
+            "handshake_message_length",
+            "extensions_length",
+            "sni_extension_length",
+            "sni_list_length",
+            "hostname_length"
+          ],
+          "mutation_modes": [
+            "short",
+            "overlong",
+            "exclude_last_entry",
+            "plus_20_with_padding"
+          ],
+          "apply_scope": "first_client_hello_flight",
+          "parser_aware": true,
+          "fallback": "disabled"
+        }
+      },
+      "requirements": {
+        "client": [
+          "Xray TLS record mutation support"
+        ],
+        "server": []
+      },
+      "notes": "Malformed length vectors are endpoint-specific and must never be combined blindly."
+    },
+    {
+      "id": "TLS-CH-018",
+      "name": "Duplicate SNI extension strategy",
+      "family": "tls-clienthello",
+      "status": "tls-client-implementation-required",
+      "priority": "P3",
+      "runtime": {
+        "component": "TLS client handshake builder",
+        "config_type": "tls-ch-018",
+        "config": {
+          "sni_extensions": [
+            "original",
+            "duplicate_same_hostname"
+          ],
+          "duplicate_position": [
+            "adjacent",
+            "first",
+            "last"
+          ],
+          "clienthello_rebuild": true,
+          "transcript_consistent": true,
+          "fallback": "single_sni"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "notes": "Servers differ in which duplicate extension they accept or select."
+    },
+    {
+      "id": "TLS-CH-019",
+      "name": "SNI extension-type differential",
+      "family": "tls-clienthello",
+      "status": "tls-client-implementation-required",
+      "priority": "P3",
+      "runtime": {
+        "component": "TLS client handshake builder",
+        "config_type": "tls-ch-019",
+        "config": {
+          "original_extension_type": "0x0000",
+          "test_extension_type": "0x9999",
+          "preserve_extension_payload": true,
+          "clienthello_rebuild": true,
+          "fallback": "normal_sni"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "notes": "Non-standard extension type is a research-only parser-differential probe."
+    },
+    {
+      "id": "TLS-CH-020",
+      "name": "SNI NameType differential",
+      "family": "tls-clienthello",
+      "status": "tls-client-implementation-required",
+      "priority": "P3",
+      "runtime": {
+        "component": "TLS client handshake builder",
+        "config_type": "tls-ch-020",
+        "config": {
+          "standard_name_type": "0x00",
+          "test_name_type": "0x01",
+          "scope": "selected_sni_entry",
+          "clienthello_rebuild": true,
+          "fallback": "normal_sni"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "notes": "Invalid NameType is likely to be rejected by strict servers; keep disabled by default."
+    },
+    {
+      "id": "TLS-CH-021",
+      "name": "SNI hostname case variation",
+      "family": "tls-clienthello",
+      "status": "tls-client-implementation-required",
+      "priority": "P2",
+      "runtime": {
+        "component": "TLS client handshake builder",
+        "config_type": "tls-ch-021",
+        "config": {
+          "transform": "alternating_ascii_case",
+          "scope": "sni_hostname_only",
+          "authority": "original-hostname",
+          "certificate_verification": "original-hostname",
+          "fallback": "original-sni"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "notes": "Case variation is standards-compatible because DNS names are case-insensitive; test provider routing."
+    },
+    {
+      "id": "TLS-CH-022",
+      "name": "SNI hostname null-byte and delimiter mutations",
+      "family": "tls-clienthello",
+      "status": "tls-client-implementation-required",
+      "priority": "P3",
+      "runtime": {
+        "component": "TLS client handshake builder",
+        "config_type": "tls-ch-022",
+        "config": {
+          "insertions": [
+            "null",
+            "space",
+            "backspace",
+            "dot",
+            "subdomain-prefix",
+            "suffix"
+          ],
+          "positions": [
+            "prefix",
+            "middle",
+            "suffix"
+          ],
+          "clienthello_rebuild": true,
+          "certificate_verification": "original-hostname",
+          "fallback": "normal_sni"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "notes": "Malformed hostname variants are research-only and often incompatible with real endpoints."
+    },
+    {
+      "id": "TLS-CH-023",
+      "name": "Multiple SNI name-list entries",
+      "family": "tls-clienthello",
+      "status": "tls-client-implementation-required",
+      "priority": "P3",
+      "runtime": {
+        "component": "TLS client handshake builder",
+        "config_type": "tls-ch-023",
+        "config": {
+          "entries": [
+            "original-hostname",
+            "configured-benign-hostname"
+          ],
+          "original_position": [
+            "middle",
+            "last"
+          ],
+          "entry_count": 2,
+          "clienthello_rebuild": true,
+          "fallback": "single_sni"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "notes": "Only use where the server's SNI parser behavior is known; no arbitrary virtual-host routing is implied."
+    },
+    {
+      "id": "TLS-CH-024",
+      "name": "Cipher-suite list inflation",
+      "family": "tls-clienthello",
+      "status": "tls-client-implementation-required",
+      "priority": "P2",
+      "runtime": {
+        "component": "TLS client handshake builder",
+        "config_type": "tls-ch-024",
+        "config": {
+          "inflation_modes": [
+            "maximum_valid_cipher_list",
+            "maximum_record_boundary"
+          ],
+          "suite_fill": "TLS_NULL_WITH_NULL_NULL",
+          "preserve_original_suites": true,
+          "recalculate_lengths": true,
+          "handshake_negotiation": "normal-supported-suite",
+          "fallback": "native_cipher_list"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "notes": "The padding suites are for size inflation only; never select an unsupported NULL cipher for the actual negotiated session."
+    },
+    {
+      "id": "TLS-CH-025",
+      "name": "ClientHello extension ordering",
+      "family": "tls-clienthello",
+      "status": "tls-client-implementation-required",
+      "priority": "P2",
+      "runtime": {
+        "component": "TLS client handshake builder",
+        "config_type": "tls-ch-025",
+        "config": {
+          "orders": [
+            "sni_first",
+            "sni_last",
+            "reverse_non_sni"
+          ],
+          "preserve_extension_payloads": true,
+          "recalculate_lengths": true,
+          "clienthello_transcript_owned_by_tls_client": true,
+          "fallback": "native_order"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLS client ClientHello construction support"
+        ],
+        "server": []
+      },
+      "notes": "Extension reordering changes the transcript and must be performed by the TLS client before the handshake starts."
     }
   ],
   "validation_contract": {
