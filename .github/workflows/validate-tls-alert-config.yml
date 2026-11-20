@@ -6,6 +6,8 @@ on:
       - experiment/tls-alert-preface
     paths:
       - 'Subscription/Serverless-tls-alert-test.json'
+      - 'Subscription/All-Methods-Stage1.json'
+      - 'METHOD-PORTFOLIO.md'
       - 'EXPERIMENTS-TLS.md'
       - '.github/workflows/validate-tls-alert-config.yml'
 
@@ -45,6 +47,6 @@ jobs:
             printf '%s\n' "$profile" > "/tmp/profile-$count.json"
             echo "Validating profile $count"
             /tmp/xray run -test -c "/tmp/profile-$count.json"
-          done < <(jq -c '.[]' Subscription/Serverless-tls-alert-test.json)
+          done < <(jq -c '.[]' Subscription/All-Methods-Stage1.json)
           test "$count" -eq 3
           echo "Validated $count profiles."
