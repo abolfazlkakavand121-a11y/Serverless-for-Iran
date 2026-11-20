@@ -1,0 +1,1077 @@
+{
+  "format": "pattng-all-25-method-configurations",
+  "version": 1,
+  "source": "Serverless-for-Iran/Subscription/Method-Execution-Pack-v1.json",
+  "branch": "lab/method-blueprints-v1",
+  "count": 25,
+  "safety": {
+    "all_disabled_by_default": true,
+    "never_claim_json_validation_as_network_success": true,
+    "external_secrets_must_be_supplied_outside_file": true,
+    "tls_certificate_validation_required": true
+  },
+  "instructions": "This file contains method-specific configuration objects for all 25 catalog entries. Only the three TLS-REC-001/002/003 objects are importable in the currently built PattNG APK. The other 22 are typed adapter configuration templates, not active runtime configurations. Do not paste the whole bundle into a profile.",
+  "methods": [
+    {
+      "id": "TLS-REC-001",
+      "name": "TLS outer record-version override",
+      "family": "tls-record",
+      "priority": "P0",
+      "config_format": "xray-finalmask-tls-record",
+      "status": "implemented-in-xray-fork",
+      "enabled": false,
+      "config": {
+        "tcp": [
+          {
+            "type": "tls-record",
+            "settings": {
+              "recordVersion": 771
+            }
+          }
+        ]
+      },
+      "importable_in_current_pattng_apk": true,
+      "note": "Valid PattNG FinalMask JSON fragment. Add to an existing server profile's FinalMask field."
+    },
+    {
+      "id": "TLS-REC-002",
+      "name": "SNI-position-aware TLS record fragmentation",
+      "family": "tls-record",
+      "priority": "P0",
+      "config_format": "xray-finalmask-sni-fragment",
+      "status": "implemented-in-xray-fork",
+      "enabled": false,
+      "config": {
+        "tcp": [
+          {
+            "type": "tls-record",
+            "settings": {
+              "sniSplit": "mid-hostname"
+            }
+          }
+        ]
+      },
+      "importable_in_current_pattng_apk": true,
+      "note": "Valid PattNG FinalMask JSON fragment. Add to an existing server profile's FinalMask field."
+    },
+    {
+      "id": "TLS-REC-003",
+      "name": "TLS record version differential across fragments",
+      "family": "tls-record",
+      "priority": "P1",
+      "config_format": "xray-finalmask-versioned-fragments",
+      "status": "implemented-in-xray-fork",
+      "enabled": false,
+      "config": {
+        "tcp": [
+          {
+            "type": "tls-record",
+            "settings": {
+              "splitAt": 2,
+              "firstFragmentVersion": 771,
+              "remainingFragmentVersion": 769
+            }
+          }
+        ]
+      },
+      "importable_in_current_pattng_apk": true,
+      "note": "Valid PattNG FinalMask JSON fragment. Add to an existing server profile's FinalMask field."
+    },
+    {
+      "id": "TLS-REC-004",
+      "name": "ClientHello padding and extension-length inflation",
+      "family": "tls-clienthello",
+      "priority": "P1",
+      "config_format": "utls-clienthello-builder",
+      "status": "requires-tls-client-change",
+      "enabled": false,
+      "config": {
+        "method": "TLS-REC-004",
+        "format": "utls-clienthello-builder",
+        "enabled": false,
+        "settings": {
+          "extension_type": "padding(21)",
+          "padding_bytes": {
+            "min": 32,
+            "max": 512
+          },
+          "placement": "last_extension",
+          "record_repacking": "recalculate_all_lengths",
+          "preserve_sni": true,
+          "fallback": "native-clienthello"
+        },
+        "requires": {
+          "client": [
+            "uTLS/Xray TLS handshake builder integration"
+          ],
+          "server": []
+        },
+        "execution_contract": "Construct padding extension before transcript hashing; update all enclosing lengths.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-CH-005",
+      "name": "Trailing-dot SNI hostname form",
+      "family": "tls-clienthello",
+      "priority": "P2",
+      "config_format": "utls-clienthello-builder",
+      "status": "requires-tls-client-change",
+      "enabled": false,
+      "config": {
+        "method": "TLS-CH-005",
+        "format": "utls-clienthello-builder",
+        "enabled": false,
+        "settings": {
+          "transform": "append-trailing-dot",
+          "scope": "SNI-only",
+          "http_authority": "original-hostname",
+          "certificate_verification_name": "original-hostname",
+          "fallback": "original-sni"
+        },
+        "requires": {
+          "client": [
+            "TLS client that can separate SNI wire name from certificate verification name"
+          ],
+          "server": []
+        },
+        "execution_contract": "Separate wire SNI from verification hostname and HTTP authority.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-CH-006",
+      "name": "SNI omission / no-SNI ClientHello",
+      "family": "tls-clienthello",
+      "priority": "P2",
+      "config_format": "utls-clienthello-builder",
+      "status": "requires-tls-client-change",
+      "enabled": false,
+      "config": {
+        "method": "TLS-CH-006",
+        "format": "utls-clienthello-builder",
+        "enabled": false,
+        "settings": {
+          "mode": "omit",
+          "verification_name": "destination-host",
+          "alpn": [
+            "h2",
+            "http/1.1"
+          ],
+          "fallback": "normal-sni"
+        },
+        "requires": {
+          "client": [
+            "TLS client handshake builder"
+          ],
+          "server": [
+            "destination must support no-SNI virtual hosting or a known default host"
+          ]
+        },
+        "execution_contract": "Omit SNI in ClientHello while preserving destination verification name.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-HS-007",
+      "name": "State-aware compatibility CCS insertion",
+      "family": "tls-handshake",
+      "priority": "P2",
+      "config_format": "tls-state-machine-hook",
+      "status": "requires-tls-state-machine",
+      "enabled": false,
+      "config": {
+        "method": "TLS-HS-007",
+        "format": "tls-state-machine-hook",
+        "enabled": false,
+        "settings": {
+          "message": "ChangeCipherSpec",
+          "value": "0x01",
+          "allowed_versions": [
+            "TLS1.3"
+          ],
+          "position": "after_clienthello_before_serverhello",
+          "max_insertions": 1,
+          "only_if_negotiated_compatibility_mode": true,
+          "fallback": "disabled"
+        },
+        "requires": {
+          "client": [
+            "TLS state machine integration"
+          ],
+          "server": [
+            "endpoint compatibility varies"
+          ]
+        },
+        "execution_contract": "Only inject compatibility CCS when negotiated TLS 1.3 compatibility state permits it.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-HS-008",
+      "name": "TLS warning-alert preface",
+      "family": "tls-handshake",
+      "priority": "P3",
+      "config_format": "xray-finalmask-header-custom",
+      "status": "existing-experimental",
+      "enabled": false,
+      "config": {
+        "method": "TLS-HS-008",
+        "format": "xray-finalmask-header-custom",
+        "enabled": false,
+        "settings": {
+          "reference": "Serverless-v71-TLS-WarnAlert",
+          "bytes": "15030300020150",
+          "enabled_by_default": false
+        },
+        "requires": {
+          "client": [
+            "existing header-custom support"
+          ],
+          "server": [
+            "highly variable compatibility"
+          ]
+        },
+        "execution_contract": "Legacy alert preface; opt-in only and endpoint compatibility probe required.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-TR-009",
+      "name": "TLSMasq relay-by-default two-phase transport",
+      "family": "pluggable-transport",
+      "priority": "P1",
+      "config_format": "tlsmasq-client-server",
+      "status": "requires-client-and-server",
+      "enabled": false,
+      "config": {
+        "method": "TLS-TR-009",
+        "format": "tlsmasq-client-server",
+        "enabled": false,
+        "settings": {
+          "cover_origin": "${TLSMASQ_COVER_ORIGIN}",
+          "shared_secret_ref": "${TLSMASQ_SECRET_REF}",
+          "secret_bytes": 52,
+          "handshake_mode": "proxy-real-origin-handshake",
+          "activation": "authenticated_post_handshake_signal",
+          "inner_tls": "fresh_handshake_inside_disguised_records",
+          "replay_protection": true,
+          "masquerade_on_auth_failure": "continue_origin_relay"
+        },
+        "requires": {
+          "client": [
+            "TLSMasq-compatible dialer"
+          ],
+          "server": [
+            "TLSMasq listener/relay",
+            "reachable cover origin"
+          ]
+        },
+        "execution_contract": "Deploy compatible client and relay; secret is external; cover origin must be reachable.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "HTTP-TR-010",
+      "name": "HTTP-prefix authenticated tunnel",
+      "family": "http-transport",
+      "priority": "P1",
+      "config_format": "http-prefix-client-server",
+      "status": "requires-client-and-server",
+      "enabled": false,
+      "config": {
+        "method": "HTTP-TR-010",
+        "format": "http-prefix-client-server",
+        "enabled": false,
+        "settings": {
+          "cover_request": "GET / HTTP/1.1",
+          "authentication": "post-prefix-cryptographic-token",
+          "upgrade": "in-band-binary-framing",
+          "fallback": "serve-configured-decoy-response",
+          "tls_mode": "optional-provider-dependent",
+          "multiplexing": "stream-id"
+        },
+        "requires": {
+          "client": [
+            "new transport adapter"
+          ],
+          "server": [
+            "controlled HTTP listener and tunnel endpoint"
+          ]
+        },
+        "execution_contract": "Requires controlled HTTP listener; authenticated upgrade switches framing only after token validation.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "HTTP-TR-011",
+      "name": "HTTP/2 stream tunnel",
+      "family": "http-transport",
+      "priority": "P2",
+      "config_format": "http2-connect-client-server",
+      "status": "requires-client-and-server",
+      "enabled": false,
+      "config": {
+        "method": "HTTP-TR-011",
+        "format": "http2-connect-client-server",
+        "enabled": false,
+        "settings": {
+          "protocol": "h2",
+          "alpn": [
+            "h2"
+          ],
+          "stream_mode": "extended-connect-if-supported-else-authenticated-post",
+          "cover_authority": "${H2_COVER_AUTHORITY}",
+          "target_service": "${H2_TUNNEL_SERVICE}",
+          "tls_verify": true
+        },
+        "requires": {
+          "client": [
+            "HTTP/2 transport implementation"
+          ],
+          "server": [
+            "cooperating HTTP/2 reverse proxy or service"
+          ]
+        },
+        "execution_contract": "Requires h2 client and cooperating proxy/service; TLS verification remains enabled.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TCP-TUN-012",
+      "name": "TCP stream desynchronization via VPN TUN",
+      "family": "packet-layer",
+      "priority": "P1",
+      "config_format": "android-vpnservice-tcp-engine",
+      "status": "requires-pattng-tun-change",
+      "enabled": false,
+      "config": {
+        "method": "TCP-TUN-012",
+        "format": "android-vpnservice-tcp-engine",
+        "enabled": false,
+        "settings": {
+          "scope": "selected TCP flows only",
+          "decoy_policy": "configurable",
+          "sequence_policy": "validated-sequence-space",
+          "ttl_policy": "per-platform-profile",
+          "real_stream": "unchanged",
+          "fallback": "disable-on-unsupported-stack",
+          "root_required": false
+        },
+        "requires": {
+          "client": [
+            "VPNService TUN packet interception",
+            "TCP sequence/ack tracking",
+            "device/Android-version test matrix"
+          ],
+          "server": []
+        },
+        "execution_contract": "Packet-level policy for selected flows; sequence/ACK state tracking is mandatory.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "FRONT-013",
+      "name": "Provider-backed domain fronting",
+      "family": "fronting",
+      "priority": "P2",
+      "config_format": "provider-fronting-client",
+      "status": "requires-provider-and-client",
+      "enabled": false,
+      "config": {
+        "method": "FRONT-013",
+        "format": "provider-fronting-client",
+        "enabled": false,
+        "settings": {
+          "front_sni": "${FRONT_DOMAIN}",
+          "http_authority": "${TARGET_AUTHORITY}",
+          "front_ip": "${FRONT_BOOTSTRAP_IP}",
+          "provider_route": "${PROVIDER_ROUTE_ID}",
+          "certificate_verification": "front-domain",
+          "origin_authorization": "provider-specific",
+          "fallback": "direct-disabled"
+        },
+        "requires": {
+          "client": [
+            "TLS client capable of SNI/authority separation"
+          ],
+          "server": [
+            "provider that explicitly supports this routing model",
+            "authorized target service"
+          ]
+        },
+        "execution_contract": "Only deploy after provider explicitly authorizes SNI/authority split routing.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "QUIC-014",
+      "name": "QUIC Initial and CRYPTO-frame fragmentation",
+      "family": "quic",
+      "priority": "P2",
+      "config_format": "quic-go-initial-crypto-hook",
+      "status": "requires-quic-core-change",
+      "enabled": false,
+      "config": {
+        "method": "QUIC-014",
+        "format": "quic-go-initial-crypto-hook",
+        "enabled": false,
+        "settings": {
+          "packet_space": "Initial",
+          "frame": "CRYPTO",
+          "boundaries": [
+            "before_sni",
+            "inside_sni",
+            "after_sni"
+          ],
+          "preserve_crypto_stream_bytes": true,
+          "recompute_initial_protection": true,
+          "fallback": "native-quic"
+        },
+        "requires": {
+          "client": [
+            "pinned quic-go integration and packet protection support"
+          ],
+          "server": []
+        },
+        "execution_contract": "Operate on Initial CRYPTO stream and regenerate packet protection; never apply TCP record logic.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "REFRACT-015",
+      "name": "Conjure / Refraction Networking client integration",
+      "family": "refraction-networking",
+      "priority": "P3",
+      "config_format": "conjure-client-and-station",
+      "status": "requires-external-infrastructure",
+      "enabled": false,
+      "config": {
+        "method": "REFRACT-015",
+        "format": "conjure-client-and-station",
+        "enabled": false,
+        "settings": {
+          "station_discovery": "registration-channel",
+          "transport": "conjure-supported-transport",
+          "station_key_ref": "${CONJURE_STATION_KEY_REF}",
+          "registration_server": "${CONJURE_REGISTRATION_SERVER}"
+        },
+        "requires": {
+          "client": [
+            "Conjure client integration"
+          ],
+          "server": [
+            "station deployment in a suitable ISP/hosting topology",
+            "registration infrastructure",
+            "packet capture/forwarding infrastructure"
+          ]
+        },
+        "execution_contract": "Station discovery, registration and forwarding infrastructure required.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-REC-016",
+      "name": "TLS record content-type differential",
+      "family": "tls-record",
+      "priority": "P3",
+      "config_format": "tls-record-differential-probe",
+      "status": "research-only",
+      "enabled": false,
+      "config": {
+        "method": "TLS-REC-016",
+        "format": "tls-record-differential-probe",
+        "enabled": false,
+        "settings": {
+          "record_content_type": "0x16",
+          "mutation_values": [
+            "0x14",
+            "0x15",
+            "0x17",
+            "invalid"
+          ],
+          "apply_scope": "first_client_hello_record",
+          "restore_before_server_flight": true,
+          "fallback": "disabled"
+        },
+        "requires": {
+          "client": [
+            "Xray TLS record mutation support"
+          ],
+          "server": []
+        },
+        "execution_contract": "Invalid record types are isolated one-variable probes; disabled in production.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-REC-017",
+      "name": "TLS record/message length-field differential",
+      "family": "tls-record",
+      "priority": "P3",
+      "config_format": "tls-length-differential-probe",
+      "status": "research-only",
+      "enabled": false,
+      "config": {
+        "method": "TLS-REC-017",
+        "format": "tls-length-differential-probe",
+        "enabled": false,
+        "settings": {
+          "fields": [
+            "record_length",
+            "handshake_message_length",
+            "extensions_length",
+            "sni_extension_length",
+            "sni_list_length",
+            "hostname_length"
+          ],
+          "mutation_modes": [
+            "short",
+            "overlong",
+            "exclude_last_entry",
+            "plus_20_with_padding"
+          ],
+          "apply_scope": "first_client_hello_flight",
+          "parser_aware": true,
+          "fallback": "disabled"
+        },
+        "requires": {
+          "client": [
+            "Xray TLS record mutation support"
+          ],
+          "server": []
+        },
+        "execution_contract": "Malformed nested lengths are one-variable probes; never enable outside controlled test endpoints.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-CH-018",
+      "name": "Duplicate SNI extension strategy",
+      "family": "tls-clienthello",
+      "priority": "P3",
+      "config_format": "utls-clienthello-builder",
+      "status": "research-only",
+      "enabled": false,
+      "config": {
+        "method": "TLS-CH-018",
+        "format": "utls-clienthello-builder",
+        "enabled": false,
+        "settings": {
+          "sni_extensions": [
+            "original",
+            "duplicate_same_hostname"
+          ],
+          "duplicate_position": [
+            "adjacent",
+            "first",
+            "last"
+          ],
+          "clienthello_rebuild": true,
+          "transcript_consistent": true,
+          "fallback": "single_sni"
+        },
+        "requires": {
+          "client": [
+            "TLS client ClientHello construction support"
+          ],
+          "server": []
+        },
+        "execution_contract": "Duplicate SNI construction changes handshake transcript and is endpoint-specific.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-CH-019",
+      "name": "SNI extension-type differential",
+      "family": "tls-clienthello",
+      "priority": "P3",
+      "config_format": "utls-clienthello-builder",
+      "status": "research-only",
+      "enabled": false,
+      "config": {
+        "method": "TLS-CH-019",
+        "format": "utls-clienthello-builder",
+        "enabled": false,
+        "settings": {
+          "original_extension_type": "0x0000",
+          "test_extension_type": "0x9999",
+          "preserve_extension_payload": true,
+          "clienthello_rebuild": true,
+          "fallback": "normal_sni"
+        },
+        "requires": {
+          "client": [
+            "TLS client ClientHello construction support"
+          ],
+          "server": []
+        },
+        "execution_contract": "Unknown extension type probe; not a production compatibility profile.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-CH-020",
+      "name": "SNI NameType differential",
+      "family": "tls-clienthello",
+      "priority": "P3",
+      "config_format": "utls-clienthello-builder",
+      "status": "research-only",
+      "enabled": false,
+      "config": {
+        "method": "TLS-CH-020",
+        "format": "utls-clienthello-builder",
+        "enabled": false,
+        "settings": {
+          "standard_name_type": "0x00",
+          "test_name_type": "0x01",
+          "scope": "selected_sni_entry",
+          "clienthello_rebuild": true,
+          "fallback": "normal_sni"
+        },
+        "requires": {
+          "client": [
+            "TLS client ClientHello construction support"
+          ],
+          "server": []
+        },
+        "execution_contract": "Nonstandard NameType probe; strict servers likely reject it.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-CH-021",
+      "name": "SNI hostname case variation",
+      "family": "tls-clienthello",
+      "priority": "P2",
+      "config_format": "utls-clienthello-builder",
+      "status": "requires-tls-client-change",
+      "enabled": false,
+      "config": {
+        "method": "TLS-CH-021",
+        "format": "utls-clienthello-builder",
+        "enabled": false,
+        "settings": {
+          "transform": "alternating_ascii_case",
+          "scope": "sni_hostname_only",
+          "authority": "original-hostname",
+          "certificate_verification": "original-hostname",
+          "fallback": "original-sni"
+        },
+        "requires": {
+          "client": [
+            "TLS client ClientHello construction support"
+          ],
+          "server": []
+        },
+        "execution_contract": "ASCII case-only SNI variation; certificate verification and authority remain canonical.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-CH-022",
+      "name": "SNI hostname null-byte and delimiter mutations",
+      "family": "tls-clienthello",
+      "priority": "P3",
+      "config_format": "utls-clienthello-builder",
+      "status": "research-only",
+      "enabled": false,
+      "config": {
+        "method": "TLS-CH-022",
+        "format": "utls-clienthello-builder",
+        "enabled": false,
+        "settings": {
+          "insertions": [
+            "null",
+            "space",
+            "backspace",
+            "dot",
+            "subdomain-prefix",
+            "suffix"
+          ],
+          "positions": [
+            "prefix",
+            "middle",
+            "suffix"
+          ],
+          "clienthello_rebuild": true,
+          "certificate_verification": "original-hostname",
+          "fallback": "normal_sni"
+        },
+        "requires": {
+          "client": [
+            "TLS client ClientHello construction support"
+          ],
+          "server": []
+        },
+        "execution_contract": "Malformed hostname mutations; isolated probes only.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-CH-023",
+      "name": "Multiple SNI name-list entries",
+      "family": "tls-clienthello",
+      "priority": "P3",
+      "config_format": "utls-clienthello-builder",
+      "status": "research-only",
+      "enabled": false,
+      "config": {
+        "method": "TLS-CH-023",
+        "format": "utls-clienthello-builder",
+        "enabled": false,
+        "settings": {
+          "entries": [
+            "original-hostname",
+            "configured-benign-hostname"
+          ],
+          "original_position": [
+            "middle",
+            "last"
+          ],
+          "entry_count": 2,
+          "clienthello_rebuild": true,
+          "fallback": "single_sni"
+        },
+        "requires": {
+          "client": [
+            "TLS client ClientHello construction support"
+          ],
+          "server": []
+        },
+        "execution_contract": "Multiple SNI entries are non-interoperable; requires controlled endpoint validation.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-CH-024",
+      "name": "Cipher-suite list inflation",
+      "family": "tls-clienthello",
+      "priority": "P2",
+      "config_format": "utls-clienthello-builder",
+      "status": "requires-tls-client-change",
+      "enabled": false,
+      "config": {
+        "method": "TLS-CH-024",
+        "format": "utls-clienthello-builder",
+        "enabled": false,
+        "settings": {
+          "inflation_modes": [
+            "maximum_valid_cipher_list",
+            "maximum_record_boundary"
+          ],
+          "suite_fill": "TLS_NULL_WITH_NULL_NULL",
+          "preserve_original_suites": true,
+          "recalculate_lengths": true,
+          "handshake_negotiation": "normal-supported-suite",
+          "fallback": "native_cipher_list"
+        },
+        "requires": {
+          "client": [
+            "TLS client ClientHello construction support"
+          ],
+          "server": []
+        },
+        "execution_contract": "Inflate offered list while retaining a real supported cipher suite for negotiation.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    },
+    {
+      "id": "TLS-CH-025",
+      "name": "ClientHello extension ordering",
+      "family": "tls-clienthello",
+      "priority": "P2",
+      "config_format": "utls-clienthello-builder",
+      "status": "requires-tls-client-change",
+      "enabled": false,
+      "config": {
+        "method": "TLS-CH-025",
+        "format": "utls-clienthello-builder",
+        "enabled": false,
+        "settings": {
+          "orders": [
+            "sni_first",
+            "sni_last",
+            "reverse_non_sni"
+          ],
+          "preserve_extension_payloads": true,
+          "recalculate_lengths": true,
+          "clienthello_transcript_owned_by_tls_client": true,
+          "fallback": "native_order"
+        },
+        "requires": {
+          "client": [
+            "TLS client ClientHello construction support"
+          ],
+          "server": []
+        },
+        "execution_contract": "Reorder extensions before TLS transcript creation; never rewrite a live stream.",
+        "validation_plan": [
+          "configuration-parse",
+          "local-endpoint-handshake",
+          "certificate-validation",
+          "http-response-body",
+          "multiple-domains",
+          "youtube",
+          "large-transfer",
+          "10-minute-stability",
+          "reconnect"
+        ]
+      },
+      "importable_in_current_pattng_apk": false,
+      "note": "Typed method configuration template only; not accepted as a live PattNG/Xray profile until its declared adapter and required components are implemented."
+    }
+  ]
+}
