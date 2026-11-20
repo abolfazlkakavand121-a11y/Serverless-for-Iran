@@ -1,17 +1,23 @@
-name: Validate method blueprints
+name: Validate method blueprints and execution pack
 
 on:
   push:
     paths:
       - "Subscription/Method-Blueprints-v1.json"
       - "Subscription/Method-Blueprints-v1.schema.json"
+      - "Subscription/Method-Execution-Pack-v1.json"
+      - "Subscription/Method-Execution-Pack-v1.schema.json"
       - "tools/validate_method_blueprints.py"
+      - "tools/validate_method_execution_pack.py"
       - ".github/workflows/validate-method-blueprints.yml"
   pull_request:
     paths:
       - "Subscription/Method-Blueprints-v1.json"
       - "Subscription/Method-Blueprints-v1.schema.json"
+      - "Subscription/Method-Execution-Pack-v1.json"
+      - "Subscription/Method-Execution-Pack-v1.schema.json"
       - "tools/validate_method_blueprints.py"
+      - "tools/validate_method_execution_pack.py"
       - ".github/workflows/validate-method-blueprints.yml"
 
 permissions:
@@ -28,3 +34,5 @@ jobs:
           python-version: "3.x"
       - name: Validate blueprint catalog
         run: python tools/validate_method_blueprints.py
+      - name: Validate execution pack
+        run: python tools/validate_method_execution_pack.py
