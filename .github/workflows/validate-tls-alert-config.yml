@@ -37,7 +37,15 @@ jobs:
         working-directory: xray
         run: go build -o /tmp/xray ./main
 
-      - name: Validate every profile in the experiment subscription
+      - name: Fetch geodata required by routing rules
+        run: |
+          mkdir -p xray
+          curl -fsSL https://github.com/XTLS/Xray-core/releases/latest/download/geoip.dat -o xray/geoip.dat
+          curl -fsSL https://github.com/XTLS/Xray-core/releases/latest/download/geosite.dat -o xray/geosite.dat
+          cp xray/geoip.dat .
+          cp xray/geosite.dat .
+
+      - name: Validate every profile in the consolidated pack
         shell: bash
         run: |
           set -euo pipefail
