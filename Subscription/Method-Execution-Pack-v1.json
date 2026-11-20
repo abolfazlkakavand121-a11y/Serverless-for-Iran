@@ -61,7 +61,7 @@
         "certificate-validation",
         "http-response-body"
       ],
-      "implementation_commit": "371b7a52f94115ca6f6fc31c6a7c100ca0a74bc0"
+      "implementation_commit": "a2fcef8a8994fa504ba5ee47badd1c196cfd234d"
     },
     {
       "profile_id": "TLS-REC-002",
@@ -117,7 +117,7 @@
         "local-endpoint-handshake",
         "certificate-validation"
       ],
-      "implementation_commit": "371b7a52f94115ca6f6fc31c6a7c100ca0a74bc0"
+      "implementation_commit": "a2fcef8a8994fa504ba5ee47badd1c196cfd234d"
     },
     {
       "profile_id": "TLS-REC-003",
