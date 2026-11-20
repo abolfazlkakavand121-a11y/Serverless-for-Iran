@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/abolfazlkakavand121-a11y/Serverless-for-Iran/lab/method-blueprints-v1/Subscription/Method-Blueprints-v1.schema.json",
+  "title": "Serverless Method Blueprint Catalog",
+  "type": "object",
+  "required": [
+    "format",
+    "format_version",
+    "purpose",
+    "safety_invariants",
+    "methods",
+    "validation_contract"
+  ],
+  "properties": {
+    "format": {
+      "const": "serverless-method-blueprints"
+    },
+    "format_version": {
+      "const": 1
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "safety_invariants": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "methods": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "family",
+          "status",
+          "runtime",
+          "requirements"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Z0-9-]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 3
+          },
+          "family": {
+            "type": "string",
+            "minLength": 2
+          },
+          "status": {
+            "type": "string",
+            "minLength": 3
+          },
+          "priority": {
+            "enum": [
+              "control",
+              "P0",
+              "P1",
+              "P2",
+              "P3"
+            ]
+          },
+          "runtime": {
+            "type": "object",
+            "required": [
+              "component",
+              "config_type",
+              "config"
+            ],
+            "properties": {
+              "component": {
+                "type": "string",
+                "minLength": 2
+              },
+              "config_type": {
+                "type": "string",
+                "minLength": 2
+              },
+              "config": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": true
+          },
+          "requirements": {
+            "type": "object",
+            "required": [
+              "client",
+              "server"
+            ],
+            "properties": {
+              "client": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "server": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "validation_contract": {
+      "type": "object",
+      "required": [
+        "levels",
+        "must_not_promote_on",
+        "required_tests",
+        "report_fields"
+      ]
+    }
+  },
+  "additionalProperties": false
+}
