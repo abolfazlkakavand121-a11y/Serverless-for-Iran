@@ -8,11 +8,11 @@ This branch contains an isolated experiment subscription. It does not modify the
 - `Serverless-v71-TLS-WarnAlert`: sends one TLS warning-alert record before the application's original ClientHello using the existing `header-custom` finalmask.
 - `Serverless-v72-TLS-WarnAlert-OOB`: combines the same warning-alert preface with the existing OOB TCP path.
 
-The injected record is the Censor-Scanner paper's `ALERT_INTERNAL_WARN` record: alert payload bytes `01 50` (warning level, internal_error description), carried in a TLS Alert record. It is not a fake certificate, does not decrypt traffic, and does not alter the ClientHello bytes or its transcript.
+The injected record is the Censor-Scanner paper's `ALERT_INTERNAL_WARN` record: alert payload bytes `01 50` (warning level, internal_error description), carried in the TLS Alert record prefix `15 03 03 00 02 01 50`. It is not a fake certificate, does not decrypt traffic, and does not alter the ClientHello bytes or its transcript.
 
 ## Evidence and limitations
 
-The 2025 IEEE S&P paper *Transport Layer Obscurity: Circumventing SNI Censorship on the TLS-Layer* reports that an internal warning alert before ClientHello bypassed the tested Iranian censor, but the technique had limited server acceptance: 9.42% in the paper's Tranco top-10k evaluation. Treat this as a targeted experiment, not a general-purpose profile. The paper also recommends checking that the real server accepts the modified handshake, not merely that the censor did not block it.
+The 2025 IEEE S&P paper [*Transport Layer Obscurity: Circumventing SNI Censorship on the TLS-Layer*](https://doi.org/10.1109/SP61157.2025.00151), with its [Censor-Scanner implementation](https://github.com/tls-attacker/Censor-Scanner), reports that an internal warning alert before ClientHello bypassed the tested Iranian censor, but the technique had limited server acceptance: 9.42% in the paper's Tranco top-10k evaluation. Treat this as a targeted experiment, not a general-purpose profile. The paper also recommends checking that the real server accepts the modified handshake, not merely that the censor did not block it.
 
 The alert-only profile and the alert+OOB profile are hypotheses for testing on the user's actual Iranian access network. They have not been live-tested from that network. A valid JSON document and known Xray mask syntax are not proof of network success.
 
@@ -20,7 +20,7 @@ The alert-only profile and the alert+OOB profile are hypotheses for testing on t
 
 A transparent Xray direct outbound forwards the application's TLS stream. It cannot arbitrarily rewrite the SNI extension, remove it, or replace the hostname and still preserve the TLS handshake transcript. Those changes must be made by the TLS client implementation itself, or by a TLS-terminating MITM trusted by the application. The research paper explicitly distinguishes transcript-preserving record-level changes from ClientHello-content changes.
 
-The upstream MITM-DomainFronting project requires a locally trusted CA certificate and documents browser-only use on non-root Android. A certificate-free MITM that decrypts arbitrary HTTPS traffic is not possible under normal TLS authentication. Do not describe SNI spoofing, domain fronting, and TLS interception as the same mechanism.
+The upstream [MITM-DomainFronting project](https://github.com/patterniha/MITM-DomainFronting) requires a locally trusted CA certificate and documents browser-only use on non-root Android. A certificate-free MITM that decrypts arbitrary HTTPS traffic is not possible under normal TLS authentication. Do not describe SNI spoofing, domain fronting, and TLS interception as the same mechanism.
 
 ## Candidate methods for the next core/client stage
 
