@@ -10,7 +10,7 @@ This branch starts the canonical method portfolio requested for the Serverless-f
 
 ## First implementation inventory
 
-The catalog contains 15 independently identified methods across TLS record manipulation, TLS ClientHello construction, handshake state, pluggable transports, HTTP transports, packet/TUN methods, provider-backed fronting, QUIC, and Refraction Networking.
+The catalog contains 25 independently identified methods across TLS record manipulation, TLS ClientHello construction, handshake state, pluggable transports, HTTP transports, packet/TUN methods, provider-backed fronting, QUIC, and Refraction Networking.
 
 ## Priority order
 
@@ -46,3 +46,13 @@ The `research/tls-mutation-lab` branch contains a separate first-flight probe. I
 ## Validation ladder
 
 A candidate advances only through the levels defined in the JSON catalog: schema validity, Xray parser validity, local protocol interoperability, remote endpoint acceptance, censorship testing on the target network, and sustained application testing. Ping-only and TCP-connect-only results never qualify.
+
+## Research sources used for this first catalog
+
+- [Niere et al., IEEE S&P 2025 — Transport Layer Obscurity](https://doi.org/10.1109/SP61157.2025.00151): 38 distinct techniques across 11 categories; covers record fragmentation, record/message types, version fields, length-field manipulation, cipher-suite inflation, SNI extension/list/hostname manipulations, padding, and record injection. The paper's Iran vantage point was in Mashhad (AS 201295); this does not establish success on every Iranian ISP or on today's network.
+- [Censor-Scanner implementation](https://github.com/tls-attacker/Censor-Scanner): reference implementation for reproducing and combining TLS ClientHello test vectors.
+- [TLSMasq protocol design notes](https://github.com/getlantern/circumvention-protocols/blob/main/text/tlsmasq.md): relay-by-default two-phase TLS transport with a secret-authenticated completion signal; this is a transport, not HTTPS interception.
+- [Conjure Refraction Networking](https://github.com/refraction-networking/conjure): requires station-side infrastructure and is not a drop-in Xray outbound.
+- [gocircum](https://github.com/SourceShift/gocircum): reviewed as a modular configuration idea, but its domain-fronting assumptions are not accepted as universal; provider support must be verified individually.
+
+The 25 method entries are the catalog's independent building blocks and transports, not an assertion that the paper's 38 combinations have all been independently implemented. Some deliberately malformed ClientHello vectors are marked P3 and disabled-by-default because server interoperability is poor or highly variable.
