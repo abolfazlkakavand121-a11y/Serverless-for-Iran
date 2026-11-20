@@ -1,0 +1,30 @@
+name: Validate method blueprints
+
+on:
+  push:
+    paths:
+      - "Subscription/Method-Blueprints-v1.json"
+      - "Subscription/Method-Blueprints-v1.schema.json"
+      - "tools/validate_method_blueprints.py"
+      - ".github/workflows/validate-method-blueprints.yml"
+  pull_request:
+    paths:
+      - "Subscription/Method-Blueprints-v1.json"
+      - "Subscription/Method-Blueprints-v1.schema.json"
+      - "tools/validate_method_blueprints.py"
+      - ".github/workflows/validate-method-blueprints.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Validate blueprint catalog
+        run: python tools/validate_method_blueprints.py
