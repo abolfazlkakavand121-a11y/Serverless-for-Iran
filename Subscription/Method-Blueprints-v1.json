@@ -1,0 +1,537 @@
+{
+  "format": "serverless-method-blueprints",
+  "format_version": 1,
+  "purpose": "Canonical method definitions for later Xray-core and PattNG implementation. This is NOT an importable Xray subscription.",
+  "safety_invariants": {
+    "preserve_existing_oob": true,
+    "never_rewrite_tls_transcript_in_a_blind_stream_proxy": true,
+    "never_disable_certificate_validation_as_a_general_solution": true,
+    "no_fake_claim_of_live_isp_validation": true,
+    "secrets_must_be_external_references": true
+  },
+  "methods": [
+    {
+      "id": "BASE-OOB-001",
+      "name": "OOB baseline",
+      "family": "tcp-transport",
+      "status": "existing-control",
+      "priority": "control",
+      "runtime": {
+        "component": "Xray FinalMask",
+        "config_type": "existing-profile-reference",
+        "config": {
+          "reference": "Serverless-v67-OOB-BASELINE"
+        }
+      },
+      "requirements": {
+        "client": [
+          "existing PattNG/Xray build"
+        ],
+        "server": []
+      },
+      "notes": "Known-good control only. Do not modify its packet behavior while evaluating candidates."
+    },
+    {
+      "id": "TLS-REC-001",
+      "name": "TLS outer record-version override",
+      "family": "tls-record",
+      "status": "core-implementation-required",
+      "priority": "P0",
+      "runtime": {
+        "component": "Xray FinalMask",
+        "config_type": "tls-record-mutation",
+        "config": {
+          "record_types": [
+            "handshake"
+          ],
+          "outer_version": "0x0304",
+          "preserve_handshake_bytes": true,
+          "apply_to": "first_client_hello_record",
+          "fallback": "pass-through",
+          "max_record_bytes": 18432
+        }
+      },
+      "requirements": {
+        "client": [
+          "Xray parser and runtime support"
+        ],
+        "server": []
+      },
+      "invariants": [
+        "Do not change ClientHello handshake bytes or transcript",
+        "Only mutate the outer TLS record legacy_version field",
+        "Fail open for non-TLS, malformed, incomplete, or non-ClientHello writes"
+      ],
+      "evidence_note": "Published server-acceptance measurement is not a bypass probability or an ISP-specific guarantee."
+    },
+    {
+      "id": "TLS-REC-002",
+      "name": "SNI-position-aware TLS record fragmentation",
+      "family": "tls-record",
+      "status": "core-implementation-required",
+      "priority": "P0",
+      "runtime": {
+        "component": "Xray FinalMask",
+        "config_type": "sni-aware-fragment",
+        "config": {
+          "parser": "incremental-clienthello",
+          "boundaries": [
+            "before_sni_extension",
+            "at_sni_extension_header",
+            "inside_hostname",
+            "after_sni_extension"
+          ],
+          "record_content_type": 22,
+          "preserve_handshake_bytes": true,
+          "max_fragments": 4,
+          "inter_fragment_delay_ms": {
+            "min": 0,
+            "max": 8
+          },
+          "fallback": "pass-through"
+        }
+      },
+      "requirements": {
+        "client": [
+          "Xray incremental ClientHello parser"
+        ],
+        "server": []
+      },
+      "invariants": [
+        "Handle ClientHello split across multiple application writes",
+        "Recompute TLS record lengths",
+        "Never split at an unvalidated offset",
+        "Keep handshake transcript byte-identical"
+      ]
+    },
+    {
+      "id": "TLS-REC-003",
+      "name": "TLS record version differential across fragments",
+      "family": "tls-record",
+      "status": "core-implementation-required",
+      "priority": "P1",
+      "runtime": {
+        "component": "Xray FinalMask",
+        "config_type": "differential-record-version",
+        "config": {
+          "first_fragment_version": "0x0303",
+          "remaining_fragments_version": "0x0301",
+          "fragmentation_ref": "TLS-REC-002",
+          "preserve_handshake_bytes": true,
+          "fallback": "pass-through"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLS record fragment engine with per-record header control"
+        ],
+        "server": []
+      },
+      "notes": "Separate mechanism from ordinary fixed-byte splitting; validate endpoint interoperability before use."
+    },
+    {
+      "id": "TLS-REC-004",
+      "name": "ClientHello padding and extension-length inflation",
+      "family": "tls-clienthello",
+      "status": "tls-client-implementation-required",
+      "priority": "P1",
+      "runtime": {
+        "component": "TLS client handshake builder",
+        "config_type": "clienthello-padding",
+        "config": {
+          "extension_type": "padding(21)",
+          "padding_bytes": {
+            "min": 32,
+            "max": 512
+          },
+          "placement": "last_extension",
+          "record_repacking": "recalculate_all_lengths",
+          "preserve_sni": true,
+          "fallback": "native-clienthello"
+        }
+      },
+      "requirements": {
+        "client": [
+          "uTLS/Xray TLS handshake builder integration"
+        ],
+        "server": []
+      },
+      "invariants": [
+        "The TLS client must construct and authenticate the exact modified ClientHello",
+        "Never append bytes to an already-generated ClientHello without updating nested lengths"
+      ]
+    },
+    {
+      "id": "TLS-CH-005",
+      "name": "Trailing-dot SNI hostname form",
+      "family": "tls-clienthello",
+      "status": "tls-client-implementation-required",
+      "priority": "P2",
+      "runtime": {
+        "component": "TLS client handshake builder",
+        "config_type": "sni-hostname-form",
+        "config": {
+          "transform": "append-trailing-dot",
+          "scope": "SNI-only",
+          "http_authority": "original-hostname",
+          "certificate_verification_name": "original-hostname",
+          "fallback": "original-sni"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLS client that can separate SNI wire name from certificate verification name"
+        ],
+        "server": []
+      },
+      "invariants": [
+        "Keep HTTP authority and certificate verification hostname explicit",
+        "Do not silently weaken certificate checks"
+      ]
+    },
+    {
+      "id": "TLS-CH-006",
+      "name": "SNI omission / no-SNI ClientHello",
+      "family": "tls-clienthello",
+      "status": "tls-client-implementation-required",
+      "priority": "P2",
+      "runtime": {
+        "component": "TLS client handshake builder",
+        "config_type": "sni-policy",
+        "config": {
+          "mode": "omit",
+          "verification_name": "destination-host",
+          "alpn": [
+            "h2",
+            "http/1.1"
+          ],
+          "fallback": "normal-sni"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLS client handshake builder"
+        ],
+        "server": [
+          "destination must support no-SNI virtual hosting or a known default host"
+        ]
+      },
+      "notes": "Not a transparent stream rewrite. Many virtual hosts will return the wrong site or reject the handshake."
+    },
+    {
+      "id": "TLS-HS-007",
+      "name": "State-aware compatibility CCS insertion",
+      "family": "tls-handshake",
+      "status": "core-implementation-required",
+      "priority": "P2",
+      "runtime": {
+        "component": "TLS flight-aware mutator",
+        "config_type": "ccs-insertion",
+        "config": {
+          "message": "ChangeCipherSpec",
+          "value": "0x01",
+          "allowed_versions": [
+            "TLS1.3"
+          ],
+          "position": "after_clienthello_before_serverhello",
+          "max_insertions": 1,
+          "only_if_negotiated_compatibility_mode": true,
+          "fallback": "disabled"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLS state machine integration"
+        ],
+        "server": [
+          "endpoint compatibility varies"
+        ]
+      },
+      "notes": "Do not use raw arbitrary CCS prefaces. Published acceptance is low and endpoint-dependent."
+    },
+    {
+      "id": "TLS-HS-008",
+      "name": "TLS warning-alert preface",
+      "family": "tls-handshake",
+      "status": "existing-experimental",
+      "priority": "P3",
+      "runtime": {
+        "component": "Xray FinalMask header-custom",
+        "config_type": "existing-profile-reference",
+        "config": {
+          "reference": "Serverless-v71-TLS-WarnAlert",
+          "bytes": "15030300020150",
+          "enabled_by_default": false
+        }
+      },
+      "requirements": {
+        "client": [
+          "existing header-custom support"
+        ],
+        "server": [
+          "highly variable compatibility"
+        ]
+      },
+      "notes": "Retain as a low-priority research control only; low server acceptance in the cited evaluation. Not a recommended general profile."
+    },
+    {
+      "id": "TLS-TR-009",
+      "name": "TLSMasq relay-by-default two-phase transport",
+      "family": "pluggable-transport",
+      "status": "dedicated-transport-required",
+      "priority": "P1",
+      "runtime": {
+        "component": "new Xray transport or sidecar",
+        "config_type": "tlsmasq",
+        "config": {
+          "cover_origin": "${TLSMASQ_COVER_ORIGIN}",
+          "shared_secret_ref": "${TLSMASQ_SECRET_REF}",
+          "secret_bytes": 52,
+          "handshake_mode": "proxy-real-origin-handshake",
+          "activation": "authenticated_post_handshake_signal",
+          "inner_tls": "fresh_handshake_inside_disguised_records",
+          "replay_protection": true,
+          "masquerade_on_auth_failure": "continue_origin_relay"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLSMasq-compatible dialer"
+        ],
+        "server": [
+          "TLSMasq listener/relay",
+          "reachable cover origin"
+        ]
+      },
+      "notes": "No local CA installation is needed for this transport design; it is not HTTPS MITM and does not expose plaintext to the relay."
+    },
+    {
+      "id": "HTTP-TR-010",
+      "name": "HTTP-prefix authenticated tunnel",
+      "family": "http-transport",
+      "status": "dedicated-transport-required",
+      "priority": "P1",
+      "runtime": {
+        "component": "new client/server transport",
+        "config_type": "http-prefix-tunnel",
+        "config": {
+          "cover_request": "GET / HTTP/1.1",
+          "authentication": "post-prefix-cryptographic-token",
+          "upgrade": "in-band-binary-framing",
+          "fallback": "serve-configured-decoy-response",
+          "tls_mode": "optional-provider-dependent",
+          "multiplexing": "stream-id"
+        }
+      },
+      "requirements": {
+        "client": [
+          "new transport adapter"
+        ],
+        "server": [
+          "controlled HTTP listener and tunnel endpoint"
+        ]
+      },
+      "invariants": [
+        "Never claim generic HTTP request camouflage is a working tunnel without a cooperating server",
+        "Authenticate before switching to tunnel framing"
+      ]
+    },
+    {
+      "id": "HTTP-TR-011",
+      "name": "HTTP/2 stream tunnel",
+      "family": "http-transport",
+      "status": "dedicated-transport-required",
+      "priority": "P2",
+      "runtime": {
+        "component": "new client/server transport",
+        "config_type": "http2-tunnel",
+        "config": {
+          "protocol": "h2",
+          "alpn": [
+            "h2"
+          ],
+          "stream_mode": "extended-connect-if-supported-else-authenticated-post",
+          "cover_authority": "${H2_COVER_AUTHORITY}",
+          "target_service": "${H2_TUNNEL_SERVICE}",
+          "tls_verify": true
+        }
+      },
+      "requirements": {
+        "client": [
+          "HTTP/2 transport implementation"
+        ],
+        "server": [
+          "cooperating HTTP/2 reverse proxy or service"
+        ]
+      },
+      "notes": "Not interchangeable with generic WebSocket or a direct TLS outbound."
+    },
+    {
+      "id": "TCP-TUN-012",
+      "name": "TCP stream desynchronization via VPN TUN",
+      "family": "packet-layer",
+      "status": "android-tun-implementation-required",
+      "priority": "P1",
+      "runtime": {
+        "component": "PattNG VPNService/TUN packet engine",
+        "config_type": "tcp-desync",
+        "config": {
+          "scope": "selected TCP flows only",
+          "decoy_policy": "configurable",
+          "sequence_policy": "validated-sequence-space",
+          "ttl_policy": "per-platform-profile",
+          "real_stream": "unchanged",
+          "fallback": "disable-on-unsupported-stack",
+          "root_required": false
+        }
+      },
+      "requirements": {
+        "client": [
+          "VPNService TUN packet interception",
+          "TCP sequence/ack tracking",
+          "device/Android-version test matrix"
+        ],
+        "server": []
+      },
+      "invariants": [
+        "No raw-socket assumption on Android",
+        "No malformed sequence injection without state tracking",
+        "Keep original application byte stream intact"
+      ]
+    },
+    {
+      "id": "FRONT-013",
+      "name": "Provider-backed domain fronting",
+      "family": "fronting",
+      "status": "provider-and-client-required",
+      "priority": "P2",
+      "runtime": {
+        "component": "TLS client plus cooperating front service",
+        "config_type": "domain-fronting",
+        "config": {
+          "front_sni": "${FRONT_DOMAIN}",
+          "http_authority": "${TARGET_AUTHORITY}",
+          "front_ip": "${FRONT_BOOTSTRAP_IP}",
+          "provider_route": "${PROVIDER_ROUTE_ID}",
+          "certificate_verification": "front-domain",
+          "origin_authorization": "provider-specific",
+          "fallback": "direct-disabled"
+        }
+      },
+      "requirements": {
+        "client": [
+          "TLS client capable of SNI/authority separation"
+        ],
+        "server": [
+          "provider that explicitly supports this routing model",
+          "authorized target service"
+        ]
+      },
+      "invariants": [
+        "Do not assume arbitrary CDN domain-fronting works",
+        "Do not equate SNI mismatch with a functioning tunnel"
+      ]
+    },
+    {
+      "id": "QUIC-014",
+      "name": "QUIC Initial and CRYPTO-frame fragmentation",
+      "family": "quic",
+      "status": "quic-core-implementation-required",
+      "priority": "P2",
+      "runtime": {
+        "component": "QUIC transport core",
+        "config_type": "quic-initial-mutation",
+        "config": {
+          "packet_space": "Initial",
+          "frame": "CRYPTO",
+          "boundaries": [
+            "before_sni",
+            "inside_sni",
+            "after_sni"
+          ],
+          "preserve_crypto_stream_bytes": true,
+          "recompute_initial_protection": true,
+          "fallback": "native-quic"
+        }
+      },
+      "requirements": {
+        "client": [
+          "pinned quic-go integration and packet protection support"
+        ],
+        "server": []
+      },
+      "notes": "TCP TLS record manipulation does not apply to QUIC. Must be implemented at QUIC packet/CRYPTO layer."
+    },
+    {
+      "id": "REFRACT-015",
+      "name": "Conjure / Refraction Networking client integration",
+      "family": "refraction-networking",
+      "status": "external-infrastructure-required",
+      "priority": "P3",
+      "runtime": {
+        "component": "Conjure client library plus station infrastructure",
+        "config_type": "conjure",
+        "config": {
+          "station_discovery": "registration-channel",
+          "transport": "conjure-supported-transport",
+          "station_key_ref": "${CONJURE_STATION_KEY_REF}",
+          "registration_server": "${CONJURE_REGISTRATION_SERVER}"
+        }
+      },
+      "requirements": {
+        "client": [
+          "Conjure client integration"
+        ],
+        "server": [
+          "station deployment in a suitable ISP/hosting topology",
+          "registration infrastructure",
+          "packet capture/forwarding infrastructure"
+        ]
+      },
+      "notes": "Not a normal VPS-only Xray profile; infrastructure and deployment model are fundamentally different."
+    }
+  ],
+  "validation_contract": {
+    "levels": [
+      "json-schema-valid",
+      "xray-parser-valid",
+      "local-protocol-interoperability",
+      "remote-endpoint-accepted",
+      "real-network-censorship-tested",
+      "sustained-application-tested"
+    ],
+    "must_not_promote_on": [
+      "ping-only",
+      "tcp-connect-only",
+      "first-tls-record-only"
+    ],
+    "required_tests": [
+      "DNS resolution",
+      "TLS handshake with certificate validation",
+      "HTTP status and response body",
+      "multiple independent domains/CDNs",
+      "YouTube playback",
+      "large download",
+      "5-10 minute stability",
+      "reconnect",
+      "IPv4 and IPv6 comparison"
+    ],
+    "report_fields": [
+      "method_id",
+      "client_build",
+      "android_version",
+      "isp_or_asn",
+      "access_type",
+      "destination",
+      "timestamp",
+      "dns",
+      "tcp",
+      "tls",
+      "http",
+      "youtube",
+      "throughput",
+      "stability",
+      "notes"
+    ]
+  }
+}
