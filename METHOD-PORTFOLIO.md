@@ -1,83 +1,49 @@
-# Method Portfolio — Stage 1
+# Method Portfolio — Blueprint v1
 
-This is a consolidated engineering inventory for the PattNG/Xray ecosystem. It deliberately separates:
-- profiles runnable with the currently available Xray configuration features;
-- techniques that require a later Xray-core or client/TUN change;
-- techniques that cannot work as requested because TLS authentication forbids them.
+The canonical target configurations are in [Subscription/Method-Blueprints-v1.json](Subscription/Method-Blueprints-v1.json).
 
-## Stage-1 runnable profile pack
+**This file is an engineering catalog, not an importable Xray subscription.** Each entry has a unique method ID, target config, runtime owner, client/server dependencies, fallback behavior, and validation constraints.
 
-File: `Subscription/All-Methods-Stage1.json`
+## Current state discovered in repositories
 
-It contains the three current, importable profiles:
-1. `Serverless-v67-OOB-BASELINE` — known-good OOB control. Preserve unchanged.
-2. `Serverless-v71-TLS-WarnAlert` — prepends the TLS warning alert record `15 03 03 00 02 01 50`.
-3. `Serverless-v72-TLS-WarnAlert-OOB` — the same alert preface combined with the existing OOB path.
+- The stable subscription `Subscription/Serverless-for-Iran.json` is not modified.
+- The known-good OOB profile remains the control and is not modified.
+- The experiment branch's `All-Methods-Stage1.json` contains only the three existing OOB / TLS Alert profiles. It is not a complete method pack and must not be represented as one.
+- Xray branch `feature/tls-record-fragment` already implements a fixed-offset TLS record split using `type: tls-record` and `settings: { "splitAt": 2 }`. Its tests cover byte preservation, incomplete-write pass-through, client-only operation, and local TLS handshake interoperability.
+- This fixed-offset feature is not SNI-aware fragmentation, record-version override, ClientHello rewriting, or TCP packet desynchronization.
+- Xray branch `research/tls-mutation-lab` contains a controlled first-flight probe; it is not a production transport.
 
-Important: profiles 2 and 3 are research-derived candidates, not field-proven. The pre-ClientHello alert variant was accepted by only 9.42% of the paper's Tranco top-10k server evaluation. The Iran-censor result does not mean broad server compatibility. Do not treat these as production profiles until full HTTPS data transfer succeeds.
+## Method families
 
-## Independent method families — next implementation stage
+| Family | Methods | Runtime owner |
+|---|---|---|
+| TLS record | outer record version override; SNI-aware record boundaries; per-fragment record versions | Xray FinalMask |
+| TLS ClientHello | padding; trailing-dot SNI; no-SNI construction | TLS client / uTLS integration |
+| TLS handshake | state-aware CCS; warning-alert research candidate | TLS state machine / existing FinalMask |
+| Pluggable transport | TLSMasq relay-by-default | dedicated client + listener |
+| HTTP transport | authenticated HTTP-prefix; HTTP/2 stream tunnel | dedicated client + server |
+| Packet layer | TCP desynchronization | PattNG VPNService/TUN |
+| Fronting | provider-backed SNI/authority separation | TLS client + cooperating provider |
+| QUIC | Initial / CRYPTO-frame mutation | QUIC core |
+| Refraction | Conjure client/station | external station infrastructure |
 
-| ID | Method | Mechanism | Can current config do it? | Required work |
-|---|---|---|---|---|
-| M01 | OOB baseline | Existing TCP OOB dial mode | Yes | Keep as control; do not alter |
-| M02 | TLS warning-alert preface | Inject a TLS Alert record before ClientHello | Yes | Already in Stage-1 pack; field test required |
-| M03 | TLS record-version override | Change outer TLS record version while preserving ClientHello bytes | No | New FinalMask transform in Xray core |
-| M04 | SNI-aware TLS-record fragmentation | Parse ClientHello and split at a boundary selected relative to the SNI extension | No | Incremental ClientHello parser + record writer in Xray core |
-| M05 | SNI removal / SNI hostname transformation | Rebuild ClientHello and its transcript with a changed or absent SNI | No | Must be implemented by the TLS client; transparent direct-stream rewrite is invalid |
-| M06 | Domain-fronting / SNI mismatch | Harmless front SNI plus target HTTP Host routed by a cooperating CDN/service | Not as a generic direct outbound | A compatible fronting provider and TLS/HTTP-aware client/relay |
-| M07 | TLS 1.3 CCS injection | Insert a compatibility ChangeCipherSpec at a protocol-valid handshake position | No | Stateful TLS-flight-aware transform; raw preface insertion is not equivalent |
-| M08 | HTTP-prefix tunnel transport | Start with a plausible HTTP request prefix, then switch to the tunnel protocol | No | New client/server transport and controlled endpoint; cannot be done by a generic direct config |
-| M09 | TCP-level desynchronization | Manipulate packet sequence/overlap/TTL so censor and endpoint parse different streams | No | Packet-level TUN implementation; root is not inherently required if the VPN app owns TUN |
-| M10 | QUIC Initial/ECH techniques | ECH privacy or QUIC CRYPTO-frame/Initial fragmentation | Not with current TCP FinalMask | QUIC-aware transport/core implementation; validate against the actual Iranian ISP |
-| M11 | MITM DomainFronting | Local TLS termination, then fronted upstream request | Separate existing project | Requires a locally trusted CA for normal browser HTTPS; non-root Android browser scope only |
+## Priority
 
-## SNI spoofing: precise boundary
+P0: TLS record-version override and SNI-aware fragmentation.
 
-There are two fundamentally different things often called “SNI spoofing”:
+P1: TLSMasq, authenticated HTTP-prefix transport, TCP TUN desynchronization, and differential record versions.
 
-1. **TLS-client-generated SNI mismatch:** the TLS client sends one SNI while the encrypted HTTP Host names another. This is only useful when the receiving front/CDN accepts the mismatch and routes the Host correctly. It is not a universal way to connect to arbitrary origins.
-2. **Transparent rewriting of an app's ClientHello:** changing the SNI after the app has generated its TLS ClientHello changes bytes covered by the handshake transcript. A blind stream proxy cannot safely do this and still complete the handshake. It requires TLS-client integration or TLS termination.
+P2: ClientHello padding, hostname form variants, no-SNI, HTTP/2, provider-backed fronting, and QUIC.
 
-The current Serverless direct outbound forwards application TLS; it does not own the app's TLS transcript. Therefore no honest config-only SNI rewrite profile can be supplied for the current core.
+P3: CCS and Conjure deployment integration.
 
-## MITM without a certificate
+Priority is an implementation order, not an effectiveness ranking.
 
-A genuine HTTPS MITM decrypts and re-signs TLS. The client must trust the signing CA (or explicitly disable certificate verification, which is unsafe and not a general solution). The existing MITM-DomainFronting project explicitly asks the user to create and trust a personal CA. It supports non-root Android browser usage, not arbitrary independent apps. A certificate-free, trust-preserving MITM for arbitrary HTTPS is not possible under normal TLS authentication.
+## Rules
 
-The certificate-free alternatives are not MITM: TLS record manipulation, packet-level desynchronization, ECH, or a cooperating domain-fronting endpoint. They do not decrypt arbitrary HTTPS.
-
-## Evidence and validation
-
-The 2025 IEEE S&P paper *Transport Layer Obscurity: Circumventing SNI Censorship on the TLS-Layer* reports 38 techniques grouped into 11 categories and tests against TLS servers plus censors in Iran and China. It emphasizes that a censor bypass is not enough: the destination server must also accept the modified handshake and return the intended page.
-
-Selected reported Tranco top-10k acceptance rates:
-- TLS record-header version set to TLS 1.3: 99.11%
-- TLS record fragmentation in message body: 92.80%
-- TLS record fragmentation in message header: 86.66%
-- Internal warning alert before ClientHello: 9.42%
-- CCS + TLS 1.3: 4.63%
-
-These are paper measurements, not current success rates on the user's ISP or current web destinations. The paper's Iran measurement used its own vantage point and should not be generalized to every Iranian operator or to current network conditions.
-
-A separate 2025 Iran study reports that censorship behavior differs by ISP and that some Iranian ASes used protocol allowlisting; HTTP GET prefixes survived longer in that particular experiment than TLS/SSH prefixes. That is evidence for researching an HTTP-prefix tunnel, not a ready-to-use generic profile.
-
-## Required acceptance test for every candidate
-
-Do not mark a profile as working based on ping or TCP connect. Record:
-1. DNS resolution;
-2. TCP establishment;
-3. TLS handshake and certificate validation;
-4. HTTP status and actual response body;
-5. multiple unrelated sites and CDNs;
-6. YouTube playback and large downloads;
-7. 5–10 minute stability and reconnect;
-8. ISP, IPv4/IPv6, destination, and time.
-
-## Safety and compatibility invariants
-
-- The stable subscription `Subscription/Serverless-for-Iran.json` is not changed by this experiment.
-- OOB is retained as an unchanged control.
-- No claim is made that the alert profiles have been live-tested from the user's network.
-- Methods M03–M10 are recorded as core/client work items, not disguised as runnable JSON profiles.
-- The client/app is not modified in this stage.
+1. Never call a blueprint importable until its runtime parser and implementation exist.
+2. Never claim live ISP success without target-network measurements.
+3. A server's acceptance rate is not a censorship-bypass probability.
+4. Keep OOB unchanged as a control.
+5. No blind SNI rewrite, no certificate-validation bypass, and no fake certificate-free HTTPS MITM.
+6. Every profile must pass TLS certificate validation, real HTTP response checks, multi-site tests, YouTube, large transfer, and sustained stability before promotion.
