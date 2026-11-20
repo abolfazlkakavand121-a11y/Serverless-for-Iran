@@ -1,7 +1,7 @@
 [
     {
-        "__Credits__": "[object Object]\nExperimental: TLS ClientHello record-layer split (splitAt=2), with existing fragment fallback retained.",
-        "remarks": "Serverless-v65-tls-record-TEST",
+        "__Credits__": "[object Object]\nControlled TLS-record test: only google.com uses splitAt=2; legacy fragment fallback retained; merge removed from experimental path. Other traffic keeps baseline routing.",
+        "remarks": "Serverless-v65-tls-record-TEST-v2",
         "version": {
             "min": "26.11.21"
         },
@@ -170,14 +170,6 @@
                     "finalmask": {
                         "tcp": [
                             {
-                                "type": "merge",
-                                "settings": {
-                                    "times": 100,
-                                    "delayMs": 30,
-                                    "maxBytes": 16384
-                                }
-                            },
-                            {
                                 "type": "tls-record",
                                 "settings": {
                                     "splitAt": 2
@@ -193,6 +185,12 @@
                             "prioritizeIPv6": true,
                             "interleave": 4,
                             "maxConcurrentTry": 32
+                        },
+                        "fallback": {
+                            "noResponseFallbackDialerProxy": "tcp-fragment-tls",
+                            "maxBufferSize": 16384,
+                            "waitMs": 2000,
+                            "passPrimaryConnAddress": true
                         }
                     }
                 }
@@ -601,6 +599,40 @@
                         ]
                     }
                 }
+            },
+            {
+                "tag": "tcp-fragment-tls-try",
+                "protocol": "direct",
+                "streamSettings": {
+                    "finalmask": {
+                        "tcp": [
+                            {
+                                "type": "merge",
+                                "settings": {
+                                    "times": 100,
+                                    "delayMs": 30,
+                                    "maxBytes": 16384
+                                }
+                            }
+                        ]
+                    },
+                    "sockopt": {
+                        "fallback": {
+                            "noResponseFallbackDialerProxy": "tcp-fragment-tls",
+                            "maxBufferSize": 16384,
+                            "waitMs": 2000,
+                            "passPrimaryConnAddress": true
+                        },
+                        "tcpUserTimeout": 4000,
+                        "domainStrategy": "ForceIP",
+                        "happyEyeballs": {
+                            "tryDelayMs": 300,
+                            "prioritizeIPv6": true,
+                            "interleave": 4,
+                            "maxConcurrentTry": 32
+                        }
+                    }
+                }
             }
         ],
         "routing": {
@@ -801,6 +833,9 @@
                     "protocol": [
                         "tls"
                     ],
+                    "domain": [
+                        "domain:google.com"
+                    ],
                     "ip": [
                         "0.0.0.0/0",
                         "::/0"
@@ -808,6 +843,29 @@
                 },
                 {
                     "outboundTag": "tls-record-test",
+                    "network": "tcp",
+                    "port": "443",
+                    "domain": [
+                        "domain:google.com"
+                    ],
+                    "ip": [
+                        "0.0.0.0/0",
+                        "::/0"
+                    ]
+                },
+                {
+                    "outboundTag": "tcp-fragment-tls-try",
+                    "network": "tcp",
+                    "protocol": [
+                        "tls"
+                    ],
+                    "ip": [
+                        "0.0.0.0/0",
+                        "::/0"
+                    ]
+                },
+                {
+                    "outboundTag": "tcp-fragment-tls-try",
                     "network": "tcp",
                     "port": "443",
                     "ip": [
