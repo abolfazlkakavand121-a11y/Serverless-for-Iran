@@ -19,7 +19,7 @@
       "name": "TLS outer record-version override",
       "family": "tls-record",
       "priority": "P0",
-      "implementation_status": "requires-core-change",
+      "implementation_status": "implemented-in-xray-fork",
       "default_enabled": false,
       "config_format": "xray-finalmask-tls-record",
       "client_component": "Xray FinalMask",
@@ -33,37 +33,42 @@
         "record_types": [
           "handshake"
         ],
-        "outer_version": "0x0304",
+        "outer_version": "0x0303",
         "preserve_handshake_bytes": true,
-        "apply_to": "first_client_hello_record",
+        "apply_to": "first_complete_client_hello_record",
         "fallback": "pass-through",
-        "max_record_bytes": 18432
+        "max_record_bytes": 18432,
+        "supported_outer_versions": [
+          "0x0301",
+          "0x0302",
+          "0x0303"
+        ],
+        "buffer_application_writes": true
       },
-      "execution_contract": "Record-header-only mutation; parser must buffer first ClientHello record and preserve all payload bytes.",
+      "execution_contract": "Buffers application writes until the first TLS record is complete, then rewrites only its legacy_version bytes. The handshake payload and transcript remain byte-identical.",
       "invariants": [
         "Do not change ClientHello handshake bytes or transcript",
         "Only mutate the outer TLS record legacy_version field",
-        "Fail open for non-TLS, malformed, incomplete, or non-ClientHello writes"
+        "Accept only outer versions 0x0301, 0x0302, and 0x0303",
+        "Do not transform non-TLS, malformed, incomplete, or non-ClientHello records; flush an incomplete buffered prefix unchanged on close"
       ],
-      "notes": "Published server-acceptance measurement is not a bypass probability or an ISP-specific guarantee.",
+      "notes": "Implemented in the PattNG Xray fork; targeted tests pass on the implementation branch. Full cross-platform regression and live network compatibility must be verified separately. Version 0x0304 is not accepted by this implementation.",
       "validation": [
         "configuration-parse",
+        "fragmented-application-writes",
+        "record-header-only-mutation",
         "local-endpoint-handshake",
         "certificate-validation",
-        "http-response-body",
-        "multiple-domains",
-        "youtube",
-        "large-transfer",
-        "10-minute-stability",
-        "reconnect"
-      ]
+        "http-response-body"
+      ],
+      "implementation_commit": "6c474c06371c799c64cccee0aec8e1114ba34df2"
     },
     {
       "profile_id": "TLS-REC-002",
       "name": "SNI-position-aware TLS record fragmentation",
       "family": "tls-record",
       "priority": "P0",
-      "implementation_status": "requires-core-change",
+      "implementation_status": "implemented-in-xray-fork",
       "default_enabled": false,
       "config_format": "xray-finalmask-sni-fragment",
       "client_component": "Xray FinalMask",
@@ -74,41 +79,45 @@
         "server": []
       },
       "parameters": {
-        "parser": "incremental-clienthello",
+        "parser": "first-complete-clienthello-record",
         "boundaries": [
           "before_sni_extension",
-          "at_sni_extension_header",
+          "inside_sni_extension_header",
           "inside_hostname",
           "after_sni_extension"
         ],
         "record_content_type": 22,
         "preserve_handshake_bytes": true,
-        "max_fragments": 4,
-        "inter_fragment_delay_ms": {
-          "min": 0,
-          "max": 8
+        "max_fragments": 2,
+        "inter_fragment_delay_ms": 0,
+        "fallback": "pass-through",
+        "sni_split_modes": {
+          "before_sni_extension": "before-extension",
+          "inside_sni_extension_header": "extension-header",
+          "inside_hostname": "mid-hostname",
+          "after_sni_extension": "after-extension"
         },
-        "fallback": "pass-through"
+        "buffer_application_writes": true
       },
-      "execution_contract": "Incremental ClientHello parser and record reframer; split only at parsed SNI-relative offsets.",
+      "execution_contract": "Buffers application writes until the first TLS record is complete, parses the ClientHello SNI extension, and splits the record at one of four validated SNI-relative offsets. If ClientHello spans multiple TLS records, SNI is absent, the record is incomplete, or the selected offset leaves no bytes for a second record, the input passes through unchanged.",
       "invariants": [
-        "Handle ClientHello split across multiple application writes",
-        "Recompute TLS record lengths",
-        "Never split at an unvalidated offset",
-        "Keep handshake transcript byte-identical"
+        "Handle a ClientHello record delivered across multiple application writes",
+        "Recompute both TLS record lengths",
+        "Split only at a parsed SNI-relative offset",
+        "Keep the reassembled handshake transcript byte-identical",
+        "No inter-fragment delay is implemented"
       ],
-      "notes": "",
+      "notes": "The four SNI split offsets are implemented. This implementation does not reassemble a ClientHello spanning multiple TLS records and does not add configurable delays. Profiles remain disabled by default.",
       "validation": [
         "configuration-parse",
+        "all-four-SNI-boundaries",
+        "fragmented-application-writes",
+        "record-length-recalculation",
+        "handshake-byte-preservation",
         "local-endpoint-handshake",
-        "certificate-validation",
-        "http-response-body",
-        "multiple-domains",
-        "youtube",
-        "large-transfer",
-        "10-minute-stability",
-        "reconnect"
-      ]
+        "certificate-validation"
+      ],
+      "implementation_commit": "6c474c06371c799c64cccee0aec8e1114ba34df2"
     },
     {
       "profile_id": "TLS-REC-003",
