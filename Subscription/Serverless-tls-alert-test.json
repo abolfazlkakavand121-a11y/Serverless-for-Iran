@@ -5,9 +5,9 @@
       "donate1": "USDT (BEP20): 0x76a768B53Ca77B43086946315f0BDF21156bF424",
       "donate2": "USDT (TRC20): TU5gKvKqcXPn8itp1DouBCwcqGHMemBm8o",
       "donate3": "TON (TON): UQAc-mZB3y7uxWHKiMmq0ORZEYgycWDWZ4V1k73HsXvTJx-i",
-      "test_note": "Unchanged OOB control profile. Do not modify."
+      "test_note": "Unmodified known-good OOB control profile. Functional configuration matches the established baseline; kept unchanged for comparison."
     },
-    "remarks": "Serverless-v70-OOB-CONTROL",
+    "remarks": "Serverless-v67-OOB-BASELINE",
     "version": {
       "min": "26.11.21"
     },
